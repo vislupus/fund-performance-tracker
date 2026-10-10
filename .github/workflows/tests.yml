@@ -28,14 +28,6 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - name: Probe data source endpoints (diagnostics)
-        continue-on-error: true
-        env:
-          PYTHONPATH: src
-        run: |
-          python -m fund_tracker probe url "https://dskam.bg/Frontend-Assembly/SitefinityWebApp/Mvc/Scripts/MutualFund/mutualFundUnitValuesChart.js?package=DSKAssetsManagement" --head 12000
-          python -m fund_tracker probe url "https://dskam.bg/ResourcePackages/DSKAssetsManagement/assets/dist/js/mutualFundHelper.js" --head 12000
-
       - name: Download live data into a temporary database
         env:
           PYTHONPATH: src

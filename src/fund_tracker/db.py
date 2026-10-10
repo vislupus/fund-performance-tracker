@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS provider_ids (
 SOURCE_PRIORITY = {
     "manual": 100,
     "bamosz": 60,
+    "dskam": 60,
     "ft": 50,
     "morningstar": 45,
     "investing": 40,

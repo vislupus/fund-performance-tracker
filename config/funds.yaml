@@ -7,13 +7,16 @@
 # inception: дата на старт на фонда (само информативно; историята се сваля докъдето има данни)
 # entry_fee_pct: входна такса в проценти, прилага се в DCA симулацията (0 = без такса)
 # providers: ред на източниците, които се опитват. Ако липсва, се ползва ред по подразбиране
-#            според ISIN (HU → ft, investing, bamosz, morningstar; други → ft, investing, morningstar).
+#            според ISIN (HU → ft, investing, bamosz, morningstar; BG → dskam, ft, investing;
+#            други → ft, investing, morningstar).
 # ids:      незадължителни "подсказки" към източниците, ако автоматичното търсене по ISIN
 #            намери грешен клас дялове:
 #              ft_symbol:          напр. "LU0106235533:EUR" или "EUNL:GER:EUR"
 #              investing_pair_id:  числовото pair_ID в Investing.com
 #              investing_query:    текст за търсене вместо ISIN
 #              morningstar_secid:  напр. "F0GBR04N6K"
+#              dskam_id:           номер на фонда в dskam.bg (5 = ДСК Баланс, 20 = ДСК Растеж, 15 = ДСК Стандарт,
+#                                  90 = ДСК Динамика, 85 = ДСК Глобални компании, 426 = ДСК-ОТП Премиум Микс)
 
 funds:
   # ---------- Портфейл: по 10 EUR на месец ----------
@@ -79,19 +82,23 @@ funds:
     manager: Amundi
 
   # ---------- Наблюдавани (обмислям ги) ----------
-  # ДСК фондовете нямат автоматичен източник – сложи CSV в data/manual/<ISIN>.csv (виж README)
+  # ДСК фондовете се свалят от dskam.bg по вътрешния номер на фонда (ids.dskam_id)
   - isin: BG9000004051
     name: ДСК Баланс
     currency: BGN
     group: watchlist
     inception: 2006-01-01
     manager: DSK Asset Management
+    ids:
+      dskam_id: 5
   - isin: BG9000004069
     name: ДСК Растеж
     currency: BGN
     group: watchlist
     inception: 2006-03-01
     manager: DSK Asset Management
+    ids:
+      dskam_id: 20
   - isin: LU1910165726
     name: Schroder ISF Global Innovation A Acc USD
     currency: USD

@@ -8,6 +8,7 @@ from ..config import Fund, Settings
 from ..db import Database
 from ..http import Http, HttpError
 from .bamosz import BamoszProvider
+from .dskam import DskamProvider
 from .base import ProviderError, Series
 from .ft import FTProvider
 from .investing import InvestingProvider
@@ -21,6 +22,7 @@ REGISTRY = {
     "ft": FTProvider,
     "investing": InvestingProvider,
     "bamosz": BamoszProvider,
+    "dskam": DskamProvider,
     "morningstar": MorningstarProvider,
 }
 

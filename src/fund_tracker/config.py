@@ -16,7 +16,7 @@ DB_PATH = DATA_DIR / "funds.sqlite"
 
 DEFAULT_PROVIDERS = {
     "HU": ["ft", "investing", "bamosz", "morningstar"],
-    "BG": ["ft", "investing", "morningstar"],
+    "BG": ["dskam", "ft", "investing"],
     "*": ["ft", "investing", "morningstar"],
 }
 

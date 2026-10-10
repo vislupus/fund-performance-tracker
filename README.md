@@ -72,20 +72,18 @@ python -m unittest discover -s tests     # тестове
 | Financial Times (`markets.ft.com`) | търсене по ISIN → xid → `get-historical-prices` | повечето UCITS фондове и ETF-и |
 | Investing.com | мобилно API (`aappapi.investing.com`) с резервен `tvc6` канал; приема само резултати, носещи ISIN-а | резервен вариант |
 | BAMOSZ (`bamosz.hu`) | bulk download servlet (`data.download`) по ISIN – пълна история от старта на фонда | унгарските OTP фондове |
-| Morningstar (legacy time-series API) | SecId по ISIN | резервен вариант |
+| DSK Asset Management (`dskam.bg`) | REST API `GetMutualFundUnitValues` по вътрешен номер на фонда (`ids.dskam_id`) | ДСК фондовете |
+| Morningstar (legacy time-series API) | SecId по ISIN | резервен вариант (в момента блокиран от WAF) |
 | Ръчен CSV | `data/manual/<ISIN>.csv` (BAMOSZ, Investing.com или дата;цена) | всичко |
 
 Сайтовете нямат официални API-та и могат да променят формата си. Затова всеки
 фонд се опитва през няколко източника, всеки опит се логва, а провалите не
 спират обновяването на останалите фондове.
 
-Проверено при разработката (октомври 2026): 10-те портфейлни фонда, 5-те
-наблюдавани LU фонда/ETF-а и бенчмаркът се свалят автоматично (OTP през BAMOSZ,
-останалите през FT). За **ДСК Баланс** и **ДСК Растеж** няма публичен източник с
-история, който да работи автоматично – `dskam.bg` показва историята само през
-JavaScript форма. За тях свали справката „Нетна стойност на активите на дял“ от
-dskam.bg (Инвестиционен помощник → фонд → период) и я сложи в
-`data/manual/BG9000004051.csv` / `data/manual/BG9000004069.csv`.
+Проверено при разработката (октомври 2026): 10-те портфейлни фонда, наблюдаваните
+LU фондове/ETF-и и бенчмаркът се свалят автоматично (OTP през BAMOSZ, останалите
+през FT), ДСК фондовете – през REST API-то на dskam.bg. Ако някой източник спре
+да работи, свали CSV ръчно в `data/manual/<ISIN>.csv`.
 
 Забележка: за Amundi Funds Global Equity / Global Multi-Asset / China Equity FT
 дава история от 2000–2001 г., т.е. включва предшественика (Pioneer Funds), от
