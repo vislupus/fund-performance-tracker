@@ -51,7 +51,7 @@ class Http:
                 if resp.status_code in allow_statuses:
                     return resp
                 last_exc = HttpError(f"HTTP {resp.status_code} for {url}")
-                if resp.status_code in (400, 401, 403, 404):
+                if resp.status_code in (202, 400, 401, 403, 404, 410, 451):
                     # retrying will not help for client errors
                     raise last_exc
             except HttpError:

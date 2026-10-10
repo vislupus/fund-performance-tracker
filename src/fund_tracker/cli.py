@@ -77,6 +77,18 @@ def cmd_reset(args) -> int:
     return 0
 
 
+def cmd_inspect(args) -> int:
+    from .inspect_page import inspect
+
+    for url in args.url:
+        try:
+            print(inspect(url))
+        except Exception as exc:
+            print(f"URL: {url}\n  ERROR {exc}")
+        print()
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="fund_tracker", description="Fund NAV tracker")
     parser.add_argument("--db", default=str(DB_PATH), help="path to the SQLite database")
@@ -104,6 +116,10 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("reset", help="delete stored NAVs and cached ids for the given ISINs")
     p.add_argument("isin", nargs="+")
     p.set_defaults(func=cmd_reset)
+
+    p = sub.add_parser("inspect", help="diagnostics: summarise links/forms/tables of web pages")
+    p.add_argument("url", nargs="+")
+    p.set_defaults(func=cmd_inspect)
 
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,

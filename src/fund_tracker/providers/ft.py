@@ -28,16 +28,20 @@ CHUNK_YEARS = 5
 
 
 def _pick_security(fund: Fund, securities: list[dict]) -> dict | None:
-    """Choose the listing matching the fund's currency (symbol looks like 'LU0106235533:EUR')."""
+    """Choose the listing matching the fund's currency (symbol looks like 'LU0106235533:EUR').
+
+    Without an explicit ft_symbol hint, only listings whose symbol or name carries the
+    ISIN are acceptable: FT's search returns unrelated instruments for unknown ISINs.
+    """
     want_symbol = (fund.ids.get("ft_symbol") or "").upper()
     if want_symbol:
         for s in securities:
             if str(s.get("symbol", "")).upper() == want_symbol:
                 return s
+        return None
     cur = fund.currency.upper()
-    isin_matches = [s for s in securities if fund.isin in str(s.get("symbol", "")).upper()
-                    or fund.isin in str(s.get("name", "")).upper()]
-    pool = isin_matches or securities
+    pool = [s for s in securities if fund.isin in str(s.get("symbol", "")).upper()
+            or fund.isin in str(s.get("name", "")).upper()]
     for s in pool:
         if str(s.get("symbol", "")).upper().endswith(":" + cur):
             return s
@@ -67,7 +71,8 @@ def resolve_xid(fund: Fund, http: Http, db: Database) -> str:
         raise ProviderError(f"FT search found nothing for {hint or fund.isin}")
     sec = _pick_security(fund, securities)
     if not sec or not sec.get("xid"):
-        raise ProviderError(f"FT search found no usable listing for {hint or fund.isin}")
+        found = ", ".join(str(x.get("symbol")) for x in securities[:5])
+        raise ProviderError(f"FT search found no listing carrying {hint or fund.isin} (hits: {found})")
     xid = str(sec["xid"])
     db.set_provider_id(fund.isin, "ft", xid, f"{sec.get('symbol')} {sec.get('name')}")
     log.info("FT: %s -> xid %s (%s)", fund.isin, xid, sec.get("symbol"))

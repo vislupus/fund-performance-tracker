@@ -28,6 +28,20 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+      - name: Inspect data source pages (diagnostics)
+        continue-on-error: true
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m fund_tracker inspect \
+            "https://www.bamosz.hu/alapoldal?isin=HU0000729793" \
+            "https://www.bamosz.hu/en/alapoldal?isin=HU0000729793" \
+            "https://www.bamosz.hu/letoltesek" \
+            "https://www.otpalapkezelo.hu/hu/arfolyamok" \
+            "https://www.otpbank.hu/otpalapkezelo/hu/alkalmazasok" \
+            "https://dskam.bg/" \
+            "https://dskbank.bg/funds/en/product-catalog/otp-fund-management-funds"
+
       - name: Download live data into a temporary database
         env:
           PYTHONPATH: src

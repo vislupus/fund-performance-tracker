@@ -6,7 +6,7 @@ import logging
 
 from ..config import Fund, Settings
 from ..db import Database
-from ..http import Http
+from ..http import Http, HttpError
 from .bamosz import BamoszProvider
 from .base import ProviderError, Series
 from .ft import FTProvider
@@ -48,7 +48,7 @@ def update_fund(db: Database, http: Http, fund: Fund, settings: Settings, run_at
         provider = cls()
         try:
             rows: Series = provider.fetch(fund, start, end, http, db)
-        except ProviderError as exc:
+        except (ProviderError, HttpError) as exc:
             msg = str(exc)
             db.log(run_at, fund.isin, pname, "failed", 0, None, None, msg)
             result["errors"].append(f"{pname}: {msg}")
