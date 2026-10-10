@@ -279,6 +279,7 @@ ul.method li { margin-bottom: 4px; }
       <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
     {% else %}
       {% if f.fx_note %}<p class="note">{{ f.fx_note }}</p>{% endif %}
+      {% if f.history_note %}<p class="note">{{ f.history_note }}</p>{% endif %}
       <div class="stats">
         {% for key, label in [('1m','1 мес.'),('3m','3 мес.'),('6m','6 мес.'),('ytd','YTD'),('1y','1 г.'),('3y','3 г.'),('5y','5 г.'),('10y','10 г.'),('inception','От начало')] %}
           {% set pr = f.periods[key] if key in f.periods else none %}

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
-import re
+import time
 
 from bs4 import BeautifulSoup
 
@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 
 SEARCH_URL = "https://markets.ft.com/data/searchapi/searchsecurities"
 HISTORY_URL = "https://markets.ft.com/data/equities/ajax/get-historical-prices"
-CHUNK_YEARS = 10
+CHUNK_YEARS = 5
 
 
 def _pick_security(fund: Fund, securities: list[dict]) -> dict | None:
@@ -44,23 +44,30 @@ def _pick_security(fund: Fund, securities: list[dict]) -> dict | None:
     return pool[0] if pool else None
 
 
-def resolve_xid(fund: Fund, http: Http, db: Database) -> str:
-    cached = db.get_provider_id(fund.isin, "ft")
-    if cached:
-        return cached
-    query = fund.ids.get("ft_symbol") or fund.isin
+def _search(http: Http, query: str) -> list[dict]:
     resp = http.get(SEARCH_URL, params={"query": query},
                     headers={"Accept": "application/json", "Referer": "https://markets.ft.com/data/funds"})
     try:
         payload = resp.json()
     except Exception as exc:
         raise ProviderError(f"FT search returned non-JSON ({exc})") from exc
-    securities = (payload.get("data") or {}).get("security") or []
+    return (payload.get("data") or {}).get("security") or []
+
+
+def resolve_xid(fund: Fund, http: Http, db: Database) -> str:
+    cached = db.get_provider_id(fund.isin, "ft")
+    if cached:
+        return cached
+    hint = fund.ids.get("ft_symbol")
+    securities = _search(http, hint or fund.isin)
+    if not securities and not hint:
+        # Some funds are not indexed by ISIN; try the name and keep only hits whose symbol carries the ISIN
+        securities = [s for s in _search(http, fund.name) if fund.isin in str(s.get("symbol", "")).upper()]
     if not securities:
-        raise ProviderError(f"FT search found nothing for {query}")
+        raise ProviderError(f"FT search found nothing for {hint or fund.isin}")
     sec = _pick_security(fund, securities)
     if not sec or not sec.get("xid"):
-        raise ProviderError(f"FT search found no usable listing for {query}")
+        raise ProviderError(f"FT search found no usable listing for {hint or fund.isin}")
     xid = str(sec["xid"])
     db.set_provider_id(fund.isin, "ft", xid, f"{sec.get('symbol')} {sec.get('name')}")
     log.info("FT: %s -> xid %s (%s)", fund.isin, xid, sec.get("symbol"))
@@ -90,33 +97,51 @@ def parse_history_html(html: str) -> Series:
     return dedupe_sorted(rows)
 
 
+def _years_back(date: dt.date, years: int) -> dt.date:
+    try:
+        return date.replace(year=date.year - years)
+    except ValueError:  # 29 February
+        return date.replace(year=date.year - years, day=28)
+
+
 class FTProvider:
     name = "ft"
+
+    def _fetch_chunk(self, fund: Fund, xid: str, start: dt.date, end: dt.date, http: Http) -> Series:
+        resp = http.get(
+            HISTORY_URL,
+            params={"startDate": start.strftime("%Y/%m/%d"), "endDate": end.strftime("%Y/%m/%d"), "symbol": xid},
+            headers={"Accept": "application/json", "X-Requested-With": "XMLHttpRequest",
+                     "Referer": f"https://markets.ft.com/data/funds/tearsheet/historical?s={fund.isin}:{fund.currency}"},
+        )
+        try:
+            html = resp.json().get("html", "")
+        except Exception:
+            html = resp.text if "<tr" in resp.text else ""
+        return parse_history_html(html)
+
+    def _fetch_chunk_with_retry(self, fund: Fund, xid: str, start: dt.date, end: dt.date, http: Http) -> Series:
+        rows = self._fetch_chunk(fund, xid, start, end, http)
+        if rows or (end - start).days < 400:
+            return rows
+        # An empty answer for a multi-year window is usually a hiccup: wait, then ask for two halves
+        time.sleep(2)
+        mid = start + (end - start) / 2
+        return dedupe_sorted(self._fetch_chunk(fund, xid, start, mid, http)
+                             + self._fetch_chunk(fund, xid, mid + dt.timedelta(days=1), end, http))
 
     def fetch(self, fund: Fund, start: dt.date, end: dt.date, http: Http, db: Database) -> Series:
         xid = resolve_xid(fund, http, db)
         out: Series = []
         chunk_end = end
+        empty_streak = 0
         while chunk_end >= start:
-            chunk_start = max(start, chunk_end.replace(year=chunk_end.year - CHUNK_YEARS))
-            resp = http.get(
-                HISTORY_URL,
-                params={
-                    "startDate": chunk_start.strftime("%Y/%m/%d"),
-                    "endDate": chunk_end.strftime("%Y/%m/%d"),
-                    "symbol": xid,
-                },
-                headers={"Accept": "application/json", "X-Requested-With": "XMLHttpRequest",
-                         "Referer": f"https://markets.ft.com/data/funds/tearsheet/historical?s={fund.isin}:{fund.currency}"},
-            )
-            try:
-                html = resp.json().get("html", "")
-            except Exception:
-                html = resp.text if "<tr" in resp.text else ""
-            part = parse_history_html(html)
+            chunk_start = max(start, _years_back(chunk_end, CHUNK_YEARS))
+            part = self._fetch_chunk_with_retry(fund, xid, chunk_start, chunk_end, http)
             out.extend(part)
-            if chunk_start == start:
-                break
+            empty_streak = empty_streak + 1 if not part else 0
+            if chunk_start == start or (out and empty_streak >= 2):
+                break  # two empty windows below the data we already have = before inception
             chunk_end = chunk_start - dt.timedelta(days=1)
         out = dedupe_sorted(out)
         if not out:

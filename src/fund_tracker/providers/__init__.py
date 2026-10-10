@@ -15,6 +15,8 @@ from .morningstar import MorningstarProvider
 
 log = logging.getLogger(__name__)
 
+STALE_DAYS = 45
+
 REGISTRY = {
     "ft": FTProvider,
     "investing": InvestingProvider,
@@ -71,6 +73,14 @@ def update_fund(db: Database, http: Http, fund: Fund, settings: Settings, run_at
         log.info("%s: %d rows via %s (%d new)", fund.isin, len(rows), source, inserted)
         # A "latest price only" result is still a success, but keep trying for history
         if source.endswith("-latest"):
+            continue
+        # Data that stops long before today is suspicious (stale listing, failed chunk):
+        # keep the rows but also ask the next provider, which merges by source priority.
+        if (today - rows[-1][0]).days > STALE_DAYS:
+            msg = f"latest row is {rows[-1][0]}, more than {STALE_DAYS} days old – trying next provider too"
+            db.log(run_at, fund.isin, source, "stale", 0, rows[0][0], rows[-1][0], msg)
+            result["errors"].append(f"{source}: {msg}")
+            log.warning("%s: %s", fund.isin, msg)
             continue
         break
     return result

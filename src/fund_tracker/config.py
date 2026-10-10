@@ -15,8 +15,8 @@ DOCS_DIR = ROOT / "docs"
 DB_PATH = DATA_DIR / "funds.sqlite"
 
 DEFAULT_PROVIDERS = {
-    "HU": ["ft", "investing", "bamosz"],
-    "BG": ["investing", "ft"],
+    "HU": ["ft", "investing", "bamosz", "morningstar"],
+    "BG": ["ft", "investing", "morningstar"],
     "*": ["ft", "investing", "morningstar"],
 }
 

@@ -34,19 +34,41 @@ TVC_HEADERS = {
 CHUNK_DAYS = 365
 
 
-def _score_quote(fund: Fund, q: dict) -> int:
+FUND_TYPES = ("fund", "etf", "фонд", "alap")
+NAME_STOPWORDS = {"FUND", "FUNDS", "EUR", "USD", "ACC", "DIST", "THE", "AND", "CLASS", "(C)", "A2", "AT"}
+
+
+def _name_tokens(name: str) -> list[str]:
+    cleaned = name.replace("–", " ").replace("-", " ").replace("(", " ").replace(")", " ").upper()
+    return [t for t in cleaned.split() if len(t) > 2 and t not in NAME_STOPWORDS]
+
+
+def _score_quote(fund: Fund, q: dict, explicit_query: bool) -> int:
+    """Score a search hit. Returns < 0 when the hit must be rejected.
+
+    A hit is acceptable only if it carries the ISIN, or (when the user supplied an
+    explicit search query) it is a fund/ETF whose name matches the fund name.
+    Without this, the ISIN search happily returns e.g. the OTP Bank share for an
+    OTP fund, because the name contains "OTP".
+    """
     text = " ".join(str(q.get(k, "")) for k in ("search_main_text", "search_main_longtext", "search_main_subtext")).upper()
+    subtext = str(q.get("search_main_subtext", "")).lower()
+    pair_type = str(q.get("pair_type", "")).lower()
+    is_fund = any(t in subtext for t in FUND_TYPES) or pair_type in {"fund", "funds", "etf"}
+    tokens = _name_tokens(fund.name)
+    name_hits = sum(1 for t in tokens if t in text)
     score = 0
     if fund.isin in text:
-        score += 10
+        score += 100
+    elif not explicit_query:
+        return -1
+    elif not is_fund or name_hits < max(2, len(tokens) // 2):
+        return -1
     if fund.currency.upper() in text:
         score += 3
-    pair_type = str(q.get("pair_type", "")).lower()
-    if pair_type in {"fund", "funds", "etf"}:
+    if is_fund:
         score += 2
-    name_tokens = [t for t in fund.name.replace("–", " ").replace("-", " ").upper().split() if len(t) > 2]
-    score += sum(1 for t in name_tokens if t in text)
-    return score
+    return score + name_hits
 
 
 def resolve_pair_id(fund: Fund, http: Http, db: Database) -> str:
@@ -55,9 +77,12 @@ def resolve_pair_id(fund: Fund, http: Http, db: Database) -> str:
     cached = db.get_provider_id(fund.isin, "investing")
     if cached:
         return cached
-    queries = [fund.ids.get("investing_query"), fund.isin, fund.name]
+    queries = [(fund.isin, False)]
+    if fund.ids.get("investing_query"):
+        queries.append((str(fund.ids["investing_query"]), True))
     best: tuple[int, dict] | None = None
-    for query in [q for q in queries if q]:
+    rejected = 0
+    for query, explicit in queries:
         resp = http.get(SEARCH_URL, params={"section": "quotes", "string": query, "lang_ID": 1,
                                             "include_pair_attr": "true"}, headers=APP_HEADERS)
         try:
@@ -67,13 +92,17 @@ def resolve_pair_id(fund: Fund, http: Http, db: Database) -> str:
         for q in quotes:
             if not q.get("pair_ID"):
                 continue
-            s = _score_quote(fund, q)
+            s = _score_quote(fund, q, explicit)
+            if s < 0:
+                rejected += 1
+                continue
             if best is None or s > best[0]:
                 best = (s, q)
-        if best and best[0] >= 10:
+        if best and best[0] >= 100:
             break
     if best is None:
-        raise ProviderError(f"Investing.com search found nothing for {fund.isin}")
+        raise ProviderError(f"Investing.com search found no listing carrying ISIN {fund.isin}"
+                            f" ({rejected} unrelated hits rejected; set ids.investing_pair_id or ids.investing_query)")
     q = best[1]
     pair_id = str(q["pair_ID"])
     label = f"{q.get('search_main_text')} | {q.get('search_main_longtext')} | {q.get('search_main_subtext')}"

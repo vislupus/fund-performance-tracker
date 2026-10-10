@@ -32,7 +32,7 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual(len({f.isin for f in funds}), len(funds))
         settings = load_settings()
         self.assertEqual(settings.purchase_day, 15)
-        self.assertEqual(funds[0].provider_order, ["ft", "investing", "bamosz"])
+        self.assertEqual(funds[0].provider_order, ["ft", "investing", "bamosz", "morningstar"])
 
     def test_db_priority_and_report(self):
         with tempfile.TemporaryDirectory() as tmp:

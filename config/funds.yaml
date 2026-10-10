@@ -7,7 +7,7 @@
 # inception: дата на старт на фонда (само информативно; историята се сваля докъдето има данни)
 # entry_fee_pct: входна такса в проценти, прилага се в DCA симулацията (0 = без такса)
 # providers: ред на източниците, които се опитват. Ако липсва, се ползва ред по подразбиране
-#            според ISIN (HU → ft, investing, bamosz; BG → investing, ft; други → ft, investing, morningstar).
+#            според ISIN (HU → ft, investing, bamosz, morningstar; други → ft, investing, morningstar).
 # ids:      незадължителни "подсказки" към източниците, ако автоматичното търсене по ISIN
 #            намери грешен клас дялове:
 #              ft_symbol:          напр. "LU0106235533:EUR" или "EUNL:GER:EUR"
@@ -85,14 +85,12 @@ funds:
     group: watchlist
     inception: 2006-01-01
     manager: DSK Asset Management
-    providers: [investing, ft]
   - isin: BG9000004069
     name: ДСК Растеж
     currency: BGN
     group: watchlist
     inception: 2006-03-01
     manager: DSK Asset Management
-    providers: [investing, ft]
   - isin: LU1910165726
     name: Schroder ISF Global Innovation A Acc USD
     currency: USD

@@ -69,6 +69,9 @@ def build_fund_model(fund: Fund, series: an.Series, settings: Settings, today: d
     }
     if fund.currency == "BGN":
         model["fx_note"] = f"NAV в BGN, преизчислен в EUR по {settings.bgn_per_eur}"
+    if series and fund.inception and series[0][0] < fund.inception - dt.timedelta(days=60):
+        model["history_note"] = (f"Източникът дава история от {series[0][0]}, преди официалния старт на класа "
+                                 f"({fund.inception}) – вероятно история на предшественик (напр. слят фонд).")
     return model
 
 

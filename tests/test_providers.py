@@ -142,3 +142,87 @@ class ProviderTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StrictMatchingTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.db = Database(Path(self.tmp.name) / "t.sqlite")
+        self.settings = Settings(history_start=dt.date(2024, 1, 1))
+
+    def tearDown(self):
+        self.db.close()
+        self.tmp.cleanup()
+
+    def test_investing_rejects_unrelated_equity(self):
+        fund = Fund("HU0000729793", "OTP Multi-Asset Conservative – EUR", "EUR", "portfolio")
+        search = {"data": {"quotes": [{"pair_ID": 8736, "search_main_text": "OTPB", "search_main_longtext": "OTP Bank Nyrt",
+                                       "search_main_subtext": "Equity - Budapest"}]}}
+        http = FakeHttp({"search_by_type": search})
+        with self.assertRaises(ProviderError):
+            InvestingProvider().fetch(fund, dt.date(2024, 1, 1), dt.date(2024, 1, 31), http, self.db)
+        self.assertIsNone(self.db.get_provider_id(fund.isin, "investing"))
+
+    def test_investing_explicit_query_accepts_fund_name_match(self):
+        fund = Fund("HU0000729793", "OTP Multi-Asset Conservative – EUR", "EUR", "portfolio",
+                    ids={"investing_query": "OTP Multi-Asset Konzervativ"})
+        def search(url, params):
+            if params["string"] == "HU0000729793":
+                return FakeResponse({"data": {"quotes": [{"pair_ID": 8736, "search_main_text": "OTPB", "search_main_longtext": "OTP Bank Nyrt", "search_main_subtext": "Equity - Budapest"}]}})
+            return FakeResponse({"data": {"quotes": [
+                {"pair_ID": 8736, "search_main_text": "OTPB", "search_main_longtext": "OTP Bank Nyrt", "search_main_subtext": "Equity - Budapest"},
+                {"pair_ID": 777, "search_main_text": "0P0001", "search_main_longtext": "OTP Multi-Asset Konzervatív Alapok Alapja EUR", "search_main_subtext": "Fund - Hungary"},
+            ]}})
+        ts = int(dt.datetime(2024, 1, 2, tzinfo=dt.timezone.utc).timestamp())
+        http = FakeHttp({"search_by_type": search, "get_screen": {"data": [{"screen_data": {"data": [{"date": ts, "price": "1.01"}]}}]}})
+        rows = InvestingProvider().fetch(fund, dt.date(2024, 1, 1), dt.date(2024, 1, 31), http, self.db)
+        self.assertEqual(rows, [(dt.date(2024, 1, 2), 1.01)])
+        self.assertEqual(self.db.get_provider_id(fund.isin, "investing"), "777")
+
+    def test_ft_name_fallback_requires_isin_in_symbol(self):
+        fund = Fund("HU0000729793", "OTP Multi-Asset Conservative", "EUR", "portfolio")
+        def search(url, params):
+            if params["query"] == fund.isin:
+                return FakeResponse({"data": {"security": []}})
+            return FakeResponse({"data": {"security": [
+                {"xid": "1", "symbol": "OTP:BUD:HUF", "name": "OTP Bank"},
+                {"xid": "2", "symbol": "HU0000729793:EUR", "name": "OTP Multi-Asset Conservative EUR"},
+            ]}})
+        http = FakeHttp({"searchsecurities": search, "get-historical-prices": ft_rows([(dt.date(2024, 1, 2), 1.0)])})
+        FTProvider().fetch(fund, dt.date(2024, 1, 1), dt.date(2024, 1, 31), http, self.db)
+        self.assertEqual(self.db.get_provider_id(fund.isin, "ft"), "2")
+
+    def test_ft_retries_empty_chunk_in_halves(self):
+        fund = Fund("LU0106235533", "Schroder ISF Euro Bond A Acc EUR", "EUR", "portfolio")
+        self.db.set_provider_id(fund.isin, "ft", "5072")
+        calls = []
+        def history(url, params):
+            calls.append((params["startDate"], params["endDate"]))
+            span = dt.datetime.strptime(params["endDate"], "%Y/%m/%d") - dt.datetime.strptime(params["startDate"], "%Y/%m/%d")
+            if span.days > 1000:  # the big window fails, halves succeed
+                return FakeResponse({"html": ""})
+            d = dt.datetime.strptime(params["endDate"], "%Y/%m/%d").date()
+            return FakeResponse(ft_rows([(d, 10.0)]))
+        http = FakeHttp({"get-historical-prices": history})
+        import fund_tracker.providers.ft as ftmod
+        ftmod.time.sleep = lambda s: None
+        rows = FTProvider().fetch(fund, dt.date(2022, 1, 1), dt.date(2026, 1, 1), http, self.db)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(len(calls), 3)
+
+    def test_stale_result_continues_to_next_provider(self):
+        fund = Fund("LU0106235533", "Schroder ISF Euro Bond A Acc EUR", "EUR", "portfolio")
+        self.db.upsert_funds([fund])
+        self.db.set_provider_id(fund.isin, "ft", "5072")
+        self.db.set_provider_id(fund.isin, "investing", "901")
+        old = dt.date(2016, 10, 7)
+        ts = int(dt.datetime(2026, 1, 9, tzinfo=dt.timezone.utc).timestamp())
+        http = FakeHttp({"get-historical-prices": ft_rows([(old, 27.0)]),
+                         "get_screen": {"data": [{"screen_data": {"data": [{"date": ts, "price": "30.0"}]}}]}})
+        res = update_fund(self.db, http, fund, Settings(history_start=dt.date(2016, 1, 1)), "r", today=dt.date(2026, 1, 10))
+        self.assertEqual(res["status"], "ok")
+        self.assertEqual(res["provider"], "investing")
+        first, last, n = self.db.nav_range(fund.isin)
+        self.assertEqual((first, last, n), (old, dt.date(2026, 1, 9), 2))
+        statuses = [(r["provider"], r["status"]) for r in self.db.last_run_logs()]
+        self.assertEqual(statuses, [("ft", "ok"), ("ft", "stale"), ("investing", "ok")])
