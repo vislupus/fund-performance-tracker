@@ -34,8 +34,10 @@ jobs:
         run: |
           python -m fund_tracker --db /tmp/smoke.sqlite update --strict || echo "::warning::Some funds failed – see log above"
           python -m fund_tracker --db /tmp/smoke.sqlite status
-          echo "--- DSK Balance values around the euro changeover and at the start ---"
-          sqlite3 /tmp/smoke.sqlite "select date, nav, source from nav where isin='BG9000004051' and (date between '2025-12-20' and '2026-01-15' or date < '2005-12-20') order by date"
+          echo "--- DSK funds: days where the NAV jumps by more than 35% (currency re-denomination?) ---"
+          sqlite3 /tmp/smoke.sqlite "select a.isin, a.date, b.nav as prev, a.nav from nav a join nav b on b.isin=a.isin and b.date=(select max(date) from nav c where c.isin=a.isin and c.date<a.date) where a.isin like 'BG%' and (a.nav/b.nav < 0.65 or a.nav/b.nav > 1.5) order by a.isin, a.date"
+          echo "--- DSK Balance yearly samples ---"
+          sqlite3 /tmp/smoke.sqlite "select date, nav from nav where isin='BG9000004051' and strftime('%m-%d', date) between '06-28' and '07-03' order by date"
           echo "--- OTP Conservative last rows / Schroder first rows ---"
           sqlite3 /tmp/smoke.sqlite "select date, nav from nav where isin='HU0000729793' order by date desc limit 3"
           sqlite3 /tmp/smoke.sqlite "select date, nav from nav where isin='LU0106235533' order by date limit 3"

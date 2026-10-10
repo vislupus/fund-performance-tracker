@@ -203,7 +203,7 @@ ul.method li { margin-bottom: 4px; }
           data-rinc="{{ pr.inception.ann if pr.inception and pr.inception.ann is not none else '' }}"
           data-vol="{{ f.risk.volatility if f.risk.volatility is not none else '' }}" data-dd="{{ f.risk.max_drawdown.dd if f.risk.max_drawdown else '' }}"
           data-dca_xirr="{{ f.dca_full.xirr if f.dca_full.xirr is not none else '' }}" data-dca_pnl="{{ f.dca_full.pnl_pct if f.dca_full.pnl_pct is not none else '' }}">
-        <td class="name"><a href="#f-{{ f.isin }}">{{ f.name }}</a><br><span class="note">{{ f.isin }} · {{ f.currency }}</span></td>
+        <td class="name"><a href="#f-{{ f.isin }}">{{ f.name }}</a><br><span class="note">{{ f.isin }} · {{ f.currency }}{% if f.nav_currency != f.currency %} → {{ f.nav_currency }}{% endif %}</span></td>
         <td><span class="pill {{ f.group }}">{{ f.group_label }}</span></td>
         <td>{% if f.last_nav %}{{ f.last_nav|num }}<br><span class="note">{{ f.last_date }}</span>{% else %}—{% endif %}</td>
         {% for key, kind in [('ytd','cum'),('1y','cum'),('3y','ann'),('5y','ann')] %}
@@ -270,7 +270,7 @@ ul.method li { margin-bottom: 4px; }
     <summary>
       <h3>{{ f.name }}</h3>
       <span class="pill {{ f.group }}">{{ f.group_label }}</span>
-      <span class="mini">{{ f.isin }} · {{ f.currency }}{% if f.manager %} · {{ f.manager }}{% endif %}</span>
+      <span class="mini">{{ f.isin }} · {{ f.currency }}{% if f.nav_currency != f.currency %} (показано в {{ f.nav_currency }}){% endif %}{% if f.manager %} · {{ f.manager }}{% endif %}</span>
       {% if f.last_nav %}<span class="mini">последна цена <strong>{{ f.last_nav|num }}</strong> ({{ f.last_date }})</span>{% endif %}
       {% if f.periods['1y'] and f.periods['1y'].available %}<span class="mini">1 г.: <strong class="{{ 'pos' if f.periods['1y'].cum >= 0 else 'neg' }}">{{ f.periods['1y'].cum|pct(1) }}</strong></span>{% endif %}
     </summary>
@@ -474,7 +474,7 @@ ul.method li { margin-bottom: 4px; }
   function buildFundCharts() {
     document.querySelectorAll('canvas.navChart').forEach(el => {
       const f = byIsin[el.dataset.isin]; if (!f || !f.nav.length) return;
-      makeChart(el, { type: 'line', data: { labels: f.nav.map(r => r[0]), datasets: [{ label: 'NAV ' + f.currency, data: f.nav.map(r => r[1]), borderColor: css('--s1'), backgroundColor: css('--s1') }] },
+      makeChart(el, { type: 'line', data: { labels: f.nav.map(r => r[0]), datasets: [{ label: 'NAV ' + (f.nav_currency || f.currency), data: f.nav.map(r => r[1]), borderColor: css('--s1'), backgroundColor: css('--s1') }] },
         options: Object.assign(baseOptions(v => fmtNum(v, 4)), { plugins: Object.assign(baseOptions(v => v).plugins, { legend: { display: false } }) }) });
     });
     document.querySelectorAll('canvas.dcaChart').forEach(el => {

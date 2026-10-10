@@ -82,3 +82,21 @@ class PipelineTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BgnSwitchTest(unittest.TestCase):
+    def test_detects_redenomination_jump(self):
+        from fund_tracker.report import bgn_series_to_eur
+        series = [(dt.date(2025, 12, 29), 1.6736), (dt.date(2025, 12, 30), 1.6740),
+                  (dt.date(2026, 1, 5), 0.8560), (dt.date(2026, 1, 6), 0.8590)]
+        out, switch = bgn_series_to_eur(series, 1.95583)
+        self.assertEqual(switch, dt.date(2026, 1, 5))
+        self.assertAlmostEqual(out[0][1], 1.6736 / 1.95583)
+        self.assertAlmostEqual(out[2][1], 0.8560)
+
+    def test_no_jump_means_all_bgn(self):
+        from fund_tracker.report import bgn_series_to_eur
+        series = [(dt.date(2025, 12, 29), 1.6736), (dt.date(2025, 12, 30), 1.6800), (dt.date(2026, 1, 5), 1.6900)]
+        out, switch = bgn_series_to_eur(series, 1.95583)
+        self.assertIsNone(switch)
+        self.assertAlmostEqual(out[-1][1], 1.69 / 1.95583)

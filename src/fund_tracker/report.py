@@ -25,10 +25,37 @@ def _fx_to_eur(fund: Fund, settings: Settings) -> float:
     return 1.0
 
 
+def bgn_series_to_eur(series: an.Series, bgn_per_eur: float) -> tuple[an.Series, dt.date | None]:
+    """Convert a BGN NAV series to EUR.
+
+    Bulgarian funds switched to EUR on 2026-01-01 and some data sources re-denominated
+    part of their history. If the series contains a one-day drop by the factor
+    1/1.95583 (±3 %), everything before that day is treated as BGN and everything
+    from it on as EUR already. Otherwise the whole series is treated as BGN.
+    Returns the EUR series and the detected switch date (None = no switch found).
+    """
+    target = 1.0 / bgn_per_eur
+    switch_idx = None
+    for i in range(1, len(series)):
+        prev, cur = series[i - 1][1], series[i][1]
+        if prev > 0 and abs(cur / prev - target) < 0.03 * target:
+            switch_idx = i
+            break
+    if switch_idx is None:
+        return [(d, v / bgn_per_eur) for d, v in series], None
+    converted = [(d, v / bgn_per_eur) for d, v in series[:switch_idx]] + series[switch_idx:]
+    return converted, series[switch_idx][0]
+
+
 def build_fund_model(fund: Fund, series: an.Series, settings: Settings, today: dt.date,
                      transactions: list[dict] | None) -> dict:
-    fx = _fx_to_eur(fund, settings)
-    eur_series = [(d, v * fx) for d, v in series] if fx != 1.0 else series
+    switch_date = None
+    if fund.currency == "BGN" and series:
+        eur_series, switch_date = bgn_series_to_eur(series, settings.bgn_per_eur)
+        # returns/risk must not see the re-denomination jump either
+        series = eur_series
+    else:
+        eur_series = series
     monthly = an.monthly_returns(series)
     yearly = an.yearly_returns(series)
     periods = an.period_returns(series)
@@ -43,6 +70,7 @@ def build_fund_model(fund: Fund, series: an.Series, settings: Settings, today: d
         "isin": fund.isin,
         "name": fund.name,
         "currency": fund.currency,
+        "nav_currency": "EUR" if fund.currency == "BGN" else fund.currency,
         "dca_currency": dca_currency,
         "group": fund.group,
         "group_label": GROUP_LABELS.get(fund.group, fund.group),
@@ -68,7 +96,11 @@ def build_fund_model(fund: Fund, series: an.Series, settings: Settings, today: d
         "real": an.real_holdings(transactions, eur_series) if transactions else None,
     }
     if fund.currency == "BGN":
-        model["fx_note"] = f"NAV в BGN, преизчислен в EUR по {settings.bgn_per_eur}"
+        if switch_date:
+            model["fx_note"] = (f"Цените до {switch_date} са в BGN и са преизчислени в EUR по {settings.bgn_per_eur}; "
+                                f"от {switch_date} източникът ги дава в EUR. Всички показатели са в EUR.")
+        else:
+            model["fx_note"] = f"NAV в BGN, преизчислен в EUR по {settings.bgn_per_eur}. Всички показатели са в EUR."
     if series and fund.inception and series[0][0] < fund.inception - dt.timedelta(days=60):
         model["history_note"] = (f"Източникът дава история от {series[0][0]}, преди официалния старт на класа "
                                  f"({fund.inception}) – вероятно история на предшественик (напр. слят фонд).")
@@ -185,7 +217,8 @@ def chart_payload(model: dict) -> dict:
     for f in model["funds"]:
         funds.append({
             "isin": f["isin"], "name": f["name"], "group": f["group"], "currency": f["currency"],
-            "dca_currency": f["dca_currency"], "nav": f["nav"], "nav_m": f["nav_m"],
+            "dca_currency": f["dca_currency"], "nav_currency": f.get("nav_currency", f["currency"]),
+            "nav": f["nav"], "nav_m": f["nav_m"],
             "dca_full": {"value_series": f["dca_full"]["value_series"]},
             "dca_plan": {"value_series": f["dca_plan"]["value_series"]},
         })
