@@ -99,10 +99,10 @@ class ProviderTest(unittest.TestCase):
             {"pair_ID": 901, "search_main_text": "LU0106235533", "search_main_longtext": "Schroder ISF Euro Bond A Acc EUR", "search_main_subtext": "Fund - Luxembourg"},
         ]}}
         ts = int(dt.datetime(2024, 1, 2, tzinfo=dt.timezone.utc).timestamp())
-        screen = {"data": [{"screen_data": {"data": [{"date": ts, "price": "27.55"}, {"date": ts + 86400, "price": "27,60"}]}}]}
+        screen = {"data": [{"screen_data": {"data": [{"date": ts, "price": "27.55"}, {"date": ts + 86400, "price": "1,027.60"}]}}]}
         http = FakeHttp({"search_by_type": search, "get_screen": screen})
         out = InvestingProvider().fetch(self.fund, dt.date(2024, 1, 1), dt.date(2024, 1, 31), http, self.db)
-        self.assertEqual(out, [(dt.date(2024, 1, 2), 27.55), (dt.date(2024, 1, 3), 27.6)])
+        self.assertEqual(out, [(dt.date(2024, 1, 2), 27.55), (dt.date(2024, 1, 3), 1027.6)])
         self.assertEqual(self.db.get_provider_id("LU0106235533", "investing"), "901")
 
     def test_investing_falls_back_to_tvc(self):

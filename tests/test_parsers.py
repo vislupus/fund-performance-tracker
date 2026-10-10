@@ -57,3 +57,21 @@ class FTParserTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DecimalSeparatorTest(unittest.TestCase):
+    def test_explicit_decimal_comma(self):
+        self.assertEqual(parse_number("1,003", decimal=","), 1.003)
+        self.assertEqual(parse_number("1.234,5", decimal=","), 1234.5)
+        self.assertEqual(parse_number("1,003", decimal="."), 1003.0)
+        self.assertEqual(parse_number("27.60", decimal="."), 27.6)
+
+    def test_bamosz_three_decimals(self):
+        from fund_tracker.providers.bamosz import parse_download_csv
+        text = '"Dátum";"Árfolyam"\n"2023/01/12";"1,002031"\n"2023/01/13";"1,003"\n"2023/01/16";"1,00294"\n'
+        rows = parse_download_csv(text)
+        self.assertEqual([v for _, v in rows], [1.002031, 1.003, 1.00294])
+
+    def test_manual_semicolon_file_uses_decimal_comma(self):
+        rows = parse_csv_text("Dátum;Árfolyam\n2023.01.13.;1,003\n2023.01.16.;1,00294\n")
+        self.assertEqual(rows[0][1], 1.003)

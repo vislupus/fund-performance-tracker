@@ -66,6 +66,23 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_clean(args) -> int:
+    """Remove isolated one-day spikes from the stored series."""
+    funds = load_funds()
+    db = Database(args.db)
+    run_at = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+    total = 0
+    for f in funds:
+        for d, v in db.delete_outliers(f.isin):
+            print(f"{f.isin}: removed {v} on {d}")
+            db.log(run_at, f.isin, "clean", "cleaned", 0, d, d, f"removed outlier {v} on {d}")
+            total += 1
+    print(f"Removed {total} outlier rows.")
+    export_csv(db, funds)
+    db.close()
+    return 0
+
+
 def cmd_reset(args) -> int:
     db = Database(args.db)
     for isin in args.isin:
@@ -128,6 +145,9 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("status", help="show what is in the database")
     p.set_defaults(func=cmd_status)
+
+    p = sub.add_parser("clean", help="remove isolated one-day price spikes from the database")
+    p.set_defaults(func=cmd_clean)
 
     p = sub.add_parser("reset", help="delete stored NAVs and cached ids for the given ISINs")
     p.add_argument("isin", nargs="+")

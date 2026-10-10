@@ -68,6 +68,9 @@ def update_fund(db: Database, http: Http, fund: Fund, settings: Settings, run_at
             continue
         source = provider.name
         inserted = db.insert_navs(fund.isin, rows, source)
+        for d, v in db.delete_outliers(fund.isin):
+            db.log(run_at, fund.isin, source, "cleaned", 0, d, d, f"removed outlier {v} on {d}")
+            log.warning("%s: removed outlier %s on %s", fund.isin, v, d)
         db.log(run_at, fund.isin, source, "ok", inserted, rows[0][0], rows[-1][0],
                f"{len(rows)} rows fetched ({'initial' if initial else 'incremental'}), {inserted} new")
         result.update(status="ok", provider=source, rows=len(rows), inserted=inserted,

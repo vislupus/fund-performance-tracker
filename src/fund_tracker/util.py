@@ -30,23 +30,34 @@ def parse_date(text: str) -> dt.date | None:
     return None
 
 
-def parse_number(text: str) -> float | None:
-    """Parse '1 234,56', '1,234.56', '1234.56', '12,34' etc."""
+def parse_number(text: str, decimal: str | None = None) -> float | None:
+    """Parse '1 234,56', '1,234.56', '1234.56', '12,34' etc.
+
+    decimal="," – comma is the decimal separator (dots/spaces are thousands separators);
+    decimal="." – dot is the decimal separator (commas are thousands separators);
+    decimal=None – guess: when both are present the last one wins; a single comma is a
+    decimal comma unless it is followed by exactly three digits and preceded by a
+    short integer (e.g. "1,234"), which is read as a thousands separator. Pass the
+    separator explicitly whenever the source's locale is known – "1,003" is ambiguous.
+    """
     if text is None:
         return None
-    s = str(text).strip().strip('"').replace(" ", "").replace(" ", "")
+    s = str(text).strip().strip('"').replace("\u00a0", "").replace(" ", "")
     if not s or s in {"-", "–", "n/a", "N/A"}:
         return None
     s = re.sub(r"[^\d,.\-]", "", s)
     if not s:
         return None
-    if "," in s and "." in s:
+    if decimal == ",":
+        s = s.replace(".", "").replace(",", ".")
+    elif decimal == ".":
+        s = s.replace(",", "")
+    elif "," in s and "." in s:
         if s.rfind(",") > s.rfind("."):
             s = s.replace(".", "").replace(",", ".")
         else:
             s = s.replace(",", "")
     elif "," in s:
-        # single comma: decimal comma unless it looks like a thousands separator (e.g. 1,234)
         head, tail = s.rsplit(",", 1)
         if len(tail) == 3 and head.replace("-", "").isdigit() and len(head.replace("-", "")) <= 3:
             s = head + tail

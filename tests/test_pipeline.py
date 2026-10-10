@@ -32,7 +32,7 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual(len({f.isin for f in funds}), len(funds))
         settings = load_settings()
         self.assertEqual(settings.purchase_day, 15)
-        self.assertEqual(funds[0].provider_order, ["ft", "investing", "bamosz", "morningstar"])
+        self.assertEqual(funds[0].provider_order, ["bamosz", "ft", "investing"])
 
     def test_db_priority_and_report(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -100,3 +100,22 @@ class BgnSwitchTest(unittest.TestCase):
         out, switch = bgn_series_to_eur(series, 1.95583)
         self.assertIsNone(switch)
         self.assertAlmostEqual(out[-1][1], 1.69 / 1.95583)
+
+
+class OutlierTest(unittest.TestCase):
+    def test_delete_outliers_and_same_source_refresh(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "t.sqlite")
+            rows = [(dt.date(2023, 1, 12), 1.002), (dt.date(2023, 1, 13), 1003.0), (dt.date(2023, 1, 16), 1.003),
+                    (dt.date(2023, 1, 17), 1.004)]
+            db.insert_navs("HU0000729793", rows, "bamosz")
+            bad = db.delete_outliers("HU0000729793")
+            self.assertEqual(bad, [(dt.date(2023, 1, 13), 1003.0)])
+            self.assertEqual(db.nav_range("HU0000729793")[2], 3)
+            # a corrected value from the same source replaces the stored one
+            n = db.insert_navs("HU0000729793", [(dt.date(2023, 1, 17), 1.005)], "bamosz")
+            self.assertEqual(n, 1)
+            self.assertEqual(db.nav_series("HU0000729793")[-1][1], 1.005)
+            n = db.insert_navs("HU0000729793", [(dt.date(2023, 1, 17), 1.005)], "bamosz")
+            self.assertEqual(n, 0)
+            db.close()

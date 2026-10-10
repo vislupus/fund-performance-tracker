@@ -7,7 +7,7 @@
 # inception: дата на старт на фонда (само информативно; историята се сваля докъдето има данни)
 # entry_fee_pct: входна такса в проценти, прилага се в DCA симулацията (0 = без такса)
 # providers: ред на източниците, които се опитват. Ако липсва, се ползва ред по подразбиране
-#            според ISIN (HU → ft, investing, bamosz, morningstar; BG → dskam, ft, investing;
+#            според ISIN (HU → bamosz, ft, investing; BG → dskam, ft, investing;
 #            други → ft, investing, morningstar).
 # ids:      незадължителни "подсказки" към източниците, ако автоматичното търсене по ISIN
 #            намери грешен клас дялове:
