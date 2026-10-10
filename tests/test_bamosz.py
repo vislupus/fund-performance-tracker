@@ -43,3 +43,21 @@ class BamoszParsersTest(unittest.TestCase):
         self.assertEqual(data["A3225:j_idt8:j_idt30"], "Frissít")
         self.assertEqual(data["javax.faces.ViewState"], "123:456")
         self.assertIn("A3225:j_idt8:chartDataValue", data)
+
+
+class BamoszDownloadTest(unittest.TestCase):
+    def test_parse_download_csv(self):
+        from fund_tracker.providers.bamosz import parse_download_csv
+        text = ('"Letöltés időpontja";"2026.10.10. 09:57"\n"ISIN kód";"HU0000729793"\n'
+                '"Alap neve";"OTP Multi-Asset Konzervatív Alapok Alapja"\n"Indulás dátuma";"2022/08/26"\n'
+                '"Dátum";"Árfolyam"\n"2022/08/26";"1"\n"2022/08/29";"0,999988"\n"2022/08/30";"0,999961"\n')
+        rows = parse_download_csv(text)
+        self.assertEqual(rows, [(dt.date(2022, 8, 26), 1.0), (dt.date(2022, 8, 29), 0.999988), (dt.date(2022, 8, 30), 0.999961)])
+
+    def test_parse_fund_download_with_more_columns(self):
+        from fund_tracker.providers.bamosz import parse_download_csv
+        text = ('"Alap neve:";"X"\n"Dátum";"Árfolyam";"NEÉ";"Kifizetett hozam"\n'
+                '"2026/10/08";"1,182102";"24342871";""\n"2026/10/07";"1,183992";"24386445";""\n')
+        rows = parse_download_csv(text)
+        self.assertEqual(rows[0], (dt.date(2026, 10, 7), 1.183992))
+        self.assertEqual(len(rows), 2)

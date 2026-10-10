@@ -1,6 +1,14 @@
-"""BAMOSZ (Hungarian fund association) – https://www.bamosz.hu/alapoldal?isin=<ISIN>
+"""BAMOSZ (Hungarian fund association) – https://www.bamosz.hu
 
-The fund page (a Liferay/JSF portal) embeds:
+Primary route: the bulk download servlet behind the "Letöltések" page,
+    POST https://www.bamosz.hu/bamosz-public-letoltes-portlet/data.download
+with selectedAlap=<ISIN>, selectedData=arfolyam, an interval and a separator.
+It returns a semicolon separated file (ISO-8859-2) with a metadata preamble
+followed by a "Dátum";"Árfolyam" table covering the whole life of the fund.
+The server sends a bogus ``Content-Encoding: ISO-8859-2`` header which makes
+curl refuse the body, so this call is made with plain ``requests``.
+Second route: GET .../bamosz-public-alapoldal-portlet/kuka.download?isin=..
+Fallback: the fund page https://www.bamosz.hu/alapoldal?isin=<ISIN> embeds:
   * a hidden input ``chartDataValue`` with ``[[epoch_ms, price], ...]`` for the
     selected chart interval (default: the last year);
   * a ``dataTable2`` table with the same interval row by row
@@ -27,8 +35,63 @@ from .base import ProviderError, Series
 log = logging.getLogger(__name__)
 
 PAGE_URL = "https://www.bamosz.hu/alapoldal?isin={isin}"
+BULK_URL = "https://www.bamosz.hu/bamosz-public-letoltes-portlet/data.download"
+FUND_DL_URL = "https://www.bamosz.hu/bamosz-public-alapoldal-portlet/kuka.download"
+PLAIN_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    "Accept-Encoding": "identity",
+    "Accept-Language": "hu,en;q=0.8",
+}
 DATE_HEADERS = ("dátum", "datum", "date")
 PRICE_HEADERS = ("árfolyam", "arfolyam", "unit price", "price")
+
+
+def parse_download_csv(text: str) -> Series:
+    """Parse the BAMOSZ download file: metadata lines, then "Dátum";"Árfolyam";... rows."""
+    rows: Series = []
+    in_table = False
+    date_idx = price_idx = None
+    for line in text.splitlines():
+        cells = [c.strip().strip('"') for c in re.split(r"[;\t]", line)]
+        if not in_table:
+            lowered = [c.lower() for c in cells]
+            if any(any(k == c or k in c for k in DATE_HEADERS) for c in lowered) and \
+               any(any(k in c for k in PRICE_HEADERS) for c in lowered) and len(cells) >= 2:
+                date_idx = next(i for i, c in enumerate(lowered) if any(k in c for k in DATE_HEADERS))
+                price_idx = next(i for i, c in enumerate(lowered) if any(k in c for k in PRICE_HEADERS))
+                in_table = True
+            continue
+        if len(cells) <= max(date_idx, price_idx):
+            continue
+        d = parse_date(cells[date_idx])
+        v = parse_number(cells[price_idx])
+        if d and v:
+            rows.append((d, v))
+    return dedupe_sorted(rows)
+
+
+def _plain_request(method: str, url: str, start: dt.date, end: dt.date, isin: str, timeout: int = 60) -> str:
+    """Use `requests` (curl rejects the server's bogus Content-Encoding header)."""
+    import requests
+
+    if method == "POST":
+        data = {"selectedAlap": isin, "selectedData": "arfolyam", "selectedHozams": "",
+                "selectedOption": "idointervallumraVonatkozoStatisztika",
+                "intervallumraDateStart": start.strftime("%Y.%m.%d"), "intervallumraDateEnd": end.strftime("%Y.%m.%d"),
+                "idopontraDate": end.strftime("%Y.%m.%d"), "sortDirection": "inc", "separator": "pontosvesszo"}
+        resp = requests.post(url, data=data, headers=dict(PLAIN_HEADERS, Referer="https://www.bamosz.hu/letoltesek"), timeout=timeout)
+    else:
+        resp = requests.get(url, params={"isin": isin, "separator": "pontosvesszo"},
+                            headers=dict(PLAIN_HEADERS, Referer=PAGE_URL.format(isin=isin)), timeout=timeout)
+    if resp.status_code != 200:
+        raise ProviderError(f"BAMOSZ {method} {url} -> HTTP {resp.status_code}")
+    raw = resp.content
+    for enc in ("iso-8859-2", "utf-8", "cp1250"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("latin-1", errors="replace")
 
 
 def parse_chart_data(html: str) -> Series:
@@ -139,36 +202,36 @@ class BamoszProvider:
     name = "bamosz"
 
     def fetch(self, fund: Fund, start: dt.date, end: dt.date, http: Http, db: Database) -> Series:
+        errors: list[str] = []
+        # 1. bulk download servlet (whole history)
+        for method, url in (("POST", BULK_URL), ("GET", FUND_DL_URL)):
+            try:
+                text = _plain_request(method, url, start, end, fund.isin, timeout=http.timeout + 20)
+            except Exception as exc:
+                errors.append(f"{method} {url.rsplit('/', 1)[-1]}: {exc}")
+                continue
+            if fund.isin not in text and "rfolyam" not in text:
+                errors.append(f"{method} {url.rsplit('/', 1)[-1]}: unexpected content")
+                continue
+            rows = parse_download_csv(text)
+            if rows:
+                log.info("BAMOSZ: %s %s gave %d rows (%s – %s)", fund.isin, url.rsplit('/', 1)[-1], len(rows), rows[0][0], rows[-1][0])
+                return [(d, v) for d, v in rows if start <= d <= end] or rows
+            errors.append(f"{method} {url.rsplit('/', 1)[-1]}: no rows parsed")
+
+        # 2. the fund page itself (last year embedded)
         page_url = PAGE_URL.format(isin=fund.isin)
         resp = http.get(page_url, headers={"Accept-Language": "hu,en;q=0.8"})
         html = resp.text
         if fund.isin not in html:
-            raise ProviderError("BAMOSZ page does not mention the ISIN (unknown fund?)")
-
+            raise ProviderError("BAMOSZ page does not mention the ISIN (unknown fund?); " + "; ".join(errors))
         rows = dedupe_sorted(parse_chart_data(html) + parse_history_table(html))
         if rows:
-            log.info("BAMOSZ: %s page carries %d rows (%s – %s)", fund.isin, len(rows), rows[0][0], rows[-1][0])
-
-        # ask for the full interval through the chart form (best effort)
-        if start < (rows[0][0] if rows else end):
-            payload = chart_form_payload(html, start, end)
-            if payload:
-                action, data = payload
-                try:
-                    r2 = http._session.post(action, data=data, timeout=http.timeout,
-                                            headers={"Referer": page_url, "Accept-Language": "hu,en;q=0.8"})
-                    if r2.status_code == 200:
-                        more = dedupe_sorted(parse_chart_data(r2.text) + parse_history_table(r2.text))
-                        if more and (not rows or more[0][0] < rows[0][0]):
-                            log.info("BAMOSZ: %s chart form gave %d rows from %s", fund.isin, len(more), more[0][0])
-                            rows = dedupe_sorted(rows + more)
-                except Exception as exc:
-                    log.debug("BAMOSZ chart form post failed: %s", exc)
-
-        if rows:
+            log.info("BAMOSZ: %s page carries %d rows (%s – %s); download failed: %s",
+                     fund.isin, len(rows), rows[0][0], rows[-1][0], "; ".join(errors))
             return rows
         latest = parse_latest(html)
         if latest:
             self.name = "bamosz-latest"
             return latest
-        raise ProviderError("BAMOSZ: page parsed but no prices found")
+        raise ProviderError("BAMOSZ: no prices found; " + "; ".join(errors))
