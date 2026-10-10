@@ -33,10 +33,8 @@ jobs:
         env:
           PYTHONPATH: src
         run: |
-          python -m fund_tracker probe forms "https://dskam.bg/funds/balance/income"
-          python -m fund_tracker probe grep "https://dskam.bg/" "<script[^>]*src=\"[^\"]+\"" --head 0
-          python -m fund_tracker probe grep "https://dskam.bg/" "fund_type" --head 3000
-          python -m fund_tracker probe grep "https://dskam.bg/funds/balance/income" "Highcharts|series|chart|json|data-" --head 400
+          python -m fund_tracker probe url "https://dskam.bg/Frontend-Assembly/SitefinityWebApp/Mvc/Scripts/MutualFund/mutualFundUnitValuesChart.js?package=DSKAssetsManagement" --head 12000
+          python -m fund_tracker probe url "https://dskam.bg/ResourcePackages/DSKAssetsManagement/assets/dist/js/mutualFundHelper.js" --head 12000
 
       - name: Download live data into a temporary database
         env:

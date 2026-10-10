@@ -79,6 +79,7 @@ funds:
     manager: Amundi
 
   # ---------- Наблюдавани (обмислям ги) ----------
+  # ДСК фондовете нямат автоматичен източник – сложи CSV в data/manual/<ISIN>.csv (виж README)
   - isin: BG9000004051
     name: ДСК Баланс
     currency: BGN
