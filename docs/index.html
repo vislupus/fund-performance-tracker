@@ -118,7 +118,7 @@ ul.method li { margin-bottom: 4px; }
 <header class="top">
   <div>
     <h1>Fund Performance Tracker</h1>
-    <div class="meta">Генериран: 2026-10-10 07:38 UTC · 18 фонда · версия 1.0.0</div>
+    <div class="meta">Генериран: 2026-10-10 08:18 UTC · 18 фонда · версия 1.0.0</div>
   </div>
   <div><button class="theme-toggle" id="themeToggle" type="button">Тъмна/светла тема</button></div>
 </header>
@@ -502,7 +502,7 @@ ul.method li { margin-bottom: 4px; }
           data-rinc=""
           data-vol="" data-dd=""
           data-dca_xirr="" data-dca_pnl="">
-        <td class="name"><a href="#f-BG9000004051">ДСК Баланс</a><br><span class="note">BG9000004051 · BGN</span></td>
+        <td class="name"><a href="#f-BG9000004051">ДСК Баланс</a><br><span class="note">BG9000004051 · BGN → EUR</span></td>
         <td><span class="pill watchlist">Наблюдавани</span></td>
         <td>—</td>
         
@@ -535,7 +535,7 @@ ul.method li { margin-bottom: 4px; }
           data-rinc=""
           data-vol="" data-dd=""
           data-dca_xirr="" data-dca_pnl="">
-        <td class="name"><a href="#f-BG9000004069">ДСК Растеж</a><br><span class="note">BG9000004069 · BGN</span></td>
+        <td class="name"><a href="#f-BG9000004069">ДСК Растеж</a><br><span class="note">BG9000004069 · BGN → EUR</span></td>
         <td><span class="pill watchlist">Наблюдавани</span></td>
         <td>—</td>
         
@@ -1025,7 +1025,7 @@ ul.method li { margin-bottom: 4px; }
     <summary>
       <h3>ДСК Баланс</h3>
       <span class="pill watchlist">Наблюдавани</span>
-      <span class="mini">BG9000004051 · BGN · DSK Asset Management</span>
+      <span class="mini">BG9000004051 · BGN (показано в EUR) · DSK Asset Management</span>
       
       
     </summary>
@@ -1040,7 +1040,7 @@ ul.method li { margin-bottom: 4px; }
     <summary>
       <h3>ДСК Растеж</h3>
       <span class="pill watchlist">Наблюдавани</span>
-      <span class="mini">BG9000004069 · BGN · DSK Asset Management</span>
+      <span class="mini">BG9000004069 · BGN (показано в EUR) · DSK Asset Management</span>
       
       
     </summary>
@@ -1238,13 +1238,13 @@ ul.method li { margin-bottom: 4px; }
     <li><strong>DCA симулация.</strong> Всеки месец на 15-то число (или първия следващ ден с цена през същия месец) се купуват дялове за 10 по цената за деня. Ако в <code>config/funds.yaml</code> е зададена <code>entry_fee_pct</code>, тя се удържа от сумата преди покупката.</li>
     <li><strong>XIRR</strong> е вътрешната норма на възвръщаемост на реалните парични потоци (всички покупки като разходи, текущата стойност като приход) – това е доходността, която усещаш като инвеститор, за разлика от доходността на фонда.</li>
     <li><strong>Реален портфейл.</strong> Ако попълниш <code>data/transactions.csv</code> с датите и сумите на реалните си покупки, отчетът показва и тях – така можеш да сравниш реалния резултат със симулацията.</li>
-    <li><strong>BGN фондове</strong> се преизчисляват в EUR по фиксирания курс 1.95583. Фондове в USD се симулират в USD.</li>
+    <li><strong>BGN фондове</strong> се преизчисляват в EUR по фиксирания курс 1.95583. Ако източникът вече дава част от историята в евро (скок с множител 1/1.95583), се преизчислява само частта в лева. Фондове в USD се симулират в USD.</li>
     <li>Миналото представяне не гарантира бъдещи резултати. Това е личен инструмент за анализ, не инвестиционен съвет.</li>
   </ul>
 </section>
 </div>
 
-<script type="application/json" id="data">{"settings":{"monthly_amount":10.0,"purchase_day":15,"my_plan_start":"2025-10-15","title":"Fund Performance Tracker","default_compare":6,"bgn_per_eur":1.95583},"funds":[{"isin":"HU0000733472","name":"OTP Strategic EUR Bond Fund – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"HU0000729793","name":"OTP Multi-Asset Conservative – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"HU0000735105","name":"OTP USA Equity Fund – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"HU0000729785","name":"OTP Multi-Asset Dynamic – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"HU0000729801","name":"OTP Multi-Asset Balanced – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU0106235533","name":"Schroder ISF Euro Bond A Acc EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1433245245","name":"Amundi Funds Protect 90 A2 EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1882445569","name":"Amundi Funds China Equity A EUR (C)","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1883327816","name":"Amundi Funds Global Multi-Asset A EUR (C)","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1883342377","name":"Amundi Funds Global Equity A EUR (C)","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"BG9000004051","name":"ДСК Баланс","group":"watchlist","currency":"BGN","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"BG9000004069","name":"ДСК Растеж","group":"watchlist","currency":"BGN","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1910165726","name":"Schroder ISF Global Innovation A Acc USD","group":"watchlist","currency":"USD","dca_currency":"USD","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU2023678878","name":"Amundi MSCI Digital Economy UCITS ETF Acc","group":"watchlist","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1548497699","name":"Allianz Global Artificial Intelligence AT EUR","group":"watchlist","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU2860962120","name":"CPR Invest – Artificial Intelligence A2 EUR Acc","group":"watchlist","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU0099574567","name":"Fidelity Funds – Global Technology A-DIST-EUR","group":"watchlist","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"IE00B4L5Y983","name":"iShares Core MSCI World UCITS ETF (Acc) – EUR","group":"benchmark","currency":"EUR","dca_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}}],"portfolio":{"value_series":[]}}</script>
+<script type="application/json" id="data">{"settings":{"monthly_amount":10.0,"purchase_day":15,"my_plan_start":"2025-10-15","title":"Fund Performance Tracker","default_compare":6,"bgn_per_eur":1.95583},"funds":[{"isin":"HU0000733472","name":"OTP Strategic EUR Bond Fund – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"HU0000729793","name":"OTP Multi-Asset Conservative – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"HU0000735105","name":"OTP USA Equity Fund – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"HU0000729785","name":"OTP Multi-Asset Dynamic – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"HU0000729801","name":"OTP Multi-Asset Balanced – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU0106235533","name":"Schroder ISF Euro Bond A Acc EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1433245245","name":"Amundi Funds Protect 90 A2 EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1882445569","name":"Amundi Funds China Equity A EUR (C)","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1883327816","name":"Amundi Funds Global Multi-Asset A EUR (C)","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1883342377","name":"Amundi Funds Global Equity A EUR (C)","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"BG9000004051","name":"ДСК Баланс","group":"watchlist","currency":"BGN","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"BG9000004069","name":"ДСК Растеж","group":"watchlist","currency":"BGN","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1910165726","name":"Schroder ISF Global Innovation A Acc USD","group":"watchlist","currency":"USD","dca_currency":"USD","nav_currency":"USD","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU2023678878","name":"Amundi MSCI Digital Economy UCITS ETF Acc","group":"watchlist","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1548497699","name":"Allianz Global Artificial Intelligence AT EUR","group":"watchlist","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU2860962120","name":"CPR Invest – Artificial Intelligence A2 EUR Acc","group":"watchlist","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU0099574567","name":"Fidelity Funds – Global Technology A-DIST-EUR","group":"watchlist","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"IE00B4L5Y983","name":"iShares Core MSCI World UCITS ETF (Acc) – EUR","group":"benchmark","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}}],"portfolio":{"value_series":[]}}</script>
 <script>
 (function () {
   const DATA = JSON.parse(document.getElementById('data').textContent);
@@ -1306,7 +1306,7 @@ ul.method li { margin-bottom: 4px; }
   function buildFundCharts() {
     document.querySelectorAll('canvas.navChart').forEach(el => {
       const f = byIsin[el.dataset.isin]; if (!f || !f.nav.length) return;
-      makeChart(el, { type: 'line', data: { labels: f.nav.map(r => r[0]), datasets: [{ label: 'NAV ' + f.currency, data: f.nav.map(r => r[1]), borderColor: css('--s1'), backgroundColor: css('--s1') }] },
+      makeChart(el, { type: 'line', data: { labels: f.nav.map(r => r[0]), datasets: [{ label: 'NAV ' + (f.nav_currency || f.currency), data: f.nav.map(r => r[1]), borderColor: css('--s1'), backgroundColor: css('--s1') }] },
         options: Object.assign(baseOptions(v => fmtNum(v, 4)), { plugins: Object.assign(baseOptions(v => v).plugins, { legend: { display: false } }) }) });
     });
     document.querySelectorAll('canvas.dcaChart').forEach(el => {
