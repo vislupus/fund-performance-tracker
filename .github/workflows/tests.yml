@@ -33,11 +33,11 @@ jobs:
         env:
           PYTHONPATH: src
         run: |
-          python -m fund_tracker probe bamosz HU0000729793
-          python -m fund_tracker probe forms "https://dskam.bg/"
-          python -m fund_tracker probe forms "https://dskam.bg/funds/balance/"
-          python -m fund_tracker probe url "https://dskam.bg/funds/balance/.currentRate" --head 2500
-          python -m fund_tracker probe url "https://dskam.bg/?fund_type=0&fund_name=balance&datepicker_from=01.01.2024&datepicker_to=10.10.2026" --head 1500
+          python -m fund_tracker probe bamosz2 HU0000729793
+          python -m fund_tracker probe forms "https://dskam.bg/funds/balance/.currentRate"
+          python -m fund_tracker probe forms "https://dskam.bg/?fund_type=0&fund_name=5&datepicker_from=01.01.2024&datepicker_to=10.10.2026"
+          python -m fund_tracker probe grep "https://dskam.bg/ResourcePackages/DSKAssetsManagement/assets/dist/js/main.js?v=20260513104338" "mutualUnitValues|currentRate|fund_name" --head 600
+          python -m fund_tracker probe grep "https://dskam.bg/" "mutualUnitValues|submit_button_" --head 1200
 
       - name: Download live data into a temporary database
         env:

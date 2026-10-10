@@ -90,10 +90,14 @@ def cmd_inspect(args) -> int:
 
 
 def cmd_probe(args) -> int:
-    from .probe import probe_bamosz, probe_forms, probe_url
+    from .probe import probe_bamosz, probe_bamosz2, probe_forms, probe_grep, probe_url
 
     if args.what == "bamosz":
         print(probe_bamosz(args.arg or "HU0000729793"))
+    elif args.what == "bamosz2":
+        print(probe_bamosz2(args.arg or "HU0000729793"))
+    elif args.what == "grep":
+        print(probe_grep(args.arg, args.pattern or "", context=args.head))
     elif args.what == "forms":
         print(probe_forms(args.arg))
     else:
@@ -134,8 +138,9 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=cmd_inspect)
 
     p = sub.add_parser("probe", help="diagnostics: probe download endpoints (bamosz <ISIN> | url <URL>)")
-    p.add_argument("what", choices=["bamosz", "url", "forms"])
+    p.add_argument("what", choices=["bamosz", "bamosz2", "url", "forms", "grep"])
     p.add_argument("arg", nargs="?")
+    p.add_argument("pattern", nargs="?")
     p.add_argument("--head", type=int, default=3000)
     p.set_defaults(func=cmd_probe)
 
