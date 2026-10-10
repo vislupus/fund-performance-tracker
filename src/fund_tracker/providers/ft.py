@@ -94,9 +94,9 @@ def parse_history_html(html: str) -> Series:
             continue
         # Funds: Date | Open | High | Low | Close | Volume ; sometimes Date | Price
         close_idx = 4 if len(cells) >= 5 else 1
-        value = parse_number(cells[close_idx].get_text(strip=True))
+        value = parse_number(cells[close_idx].get_text(strip=True), decimal=".")
         if value is None and len(cells) >= 2:
-            value = parse_number(cells[1].get_text(strip=True))
+            value = parse_number(cells[1].get_text(strip=True), decimal=".")
         if value:
             rows.append((d, value))
     return dedupe_sorted(rows)

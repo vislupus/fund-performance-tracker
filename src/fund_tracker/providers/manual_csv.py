@@ -52,12 +52,13 @@ def parse_csv_text(text: str) -> Series:
         date_idx = 0
     if val_idx is None:
         val_idx = 1 if len(header) > 1 else 0
+    decimal = "," if delim in (";", "\t") else None
     out: Series = []
     for r in data_rows:
         if len(r) <= max(date_idx, val_idx):
             continue
         d = parse_date(r[date_idx])
-        v = parse_number(r[val_idx])
+        v = parse_number(r[val_idx], decimal=decimal)
         if d and v:
             out.append((d, v))
     return dedupe_sorted(out)

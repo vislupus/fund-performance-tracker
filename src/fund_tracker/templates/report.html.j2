@@ -77,6 +77,7 @@ td.name { white-space: normal; min-width: 190px; }
 .pos { color: var(--good); } .neg { color: var(--bad); }
 .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink-2); background: var(--surface); }
 .pill.ok { color: var(--good); } .pill.failed { color: var(--bad); } .pill.never { color: var(--warn); }
+tr.attempt td { color: var(--muted); }
 .pill.portfolio { border-color: var(--s1); color: var(--s1); }
 .pill.watchlist { border-color: var(--s7); color: var(--s7); }
 .pill.benchmark { border-color: var(--s4); color: var(--s4); }
@@ -376,16 +377,18 @@ ul.method li { margin-bottom: 4px; }
 <!-- ============================ STATUS ============================ -->
 <section id="status">
   <h2>Данни и източници</h2>
-  <p class="lead">Резултат от последното обновяване{% if m.last_run_at %} ({{ m.last_run_at }}){% endif %}. Всеки фонд се опитва през няколко източника по ред; първият, който върне история, се записва. Ако всички се провалят, свали CSV ръчно в <code>data/manual/&lt;ISIN&gt;.csv</code>.</p>
+  <p class="lead">Резултат от последното обновяване{% if m.last_run_at %} ({{ m.last_run_at }}){% endif %}. Всеки фонд се опитва през няколко източника по ред; първият, който върне история, се записва (OK). Източници, които са били опитани преди него и не познават фонда, са отбелязани като „пропуснат“ – това не е проблем. Грешка има само ако нито един източник не е успял; тогава свали CSV ръчно в <code>data/manual/&lt;ISIN&gt;.csv</code>.</p>
   <div class="table-wrap card">
   <table>
     <thead><tr><th>Фонд</th><th>Източник</th><th>Резултат</th><th>Нови редове</th><th>Период</th><th>Съобщение</th></tr></thead>
     <tbody>
     {% for f in m.funds %}
       {% if f.last_run %}
+        {% set succeeded = f.fetch_status == 'ok' %}
         {% for r in f.last_run %}
-        <tr><td class="name">{% if loop.first %}{{ f.name }}<br><span class="note">{{ f.isin }}</span>{% endif %}</td><td>{{ r.provider }}</td>
-          <td><span class="pill {{ 'ok' if r.status == 'ok' else 'failed' }}">{{ r.status }}</span></td><td>{{ r.rows }}</td>
+        {% set skipped = succeeded and r.status != 'ok' %}
+        <tr{% if skipped %} class="attempt"{% endif %}><td class="name">{% if loop.first %}{{ f.name }}<br><span class="note">{{ f.isin }}</span>{% endif %}</td><td>{{ r.provider }}</td>
+          <td>{% if r.status == 'ok' %}<span class="pill ok">OK</span>{% elif skipped %}<span class="pill">пропуснат</span>{% else %}<span class="pill failed">{{ r.status }}</span>{% endif %}</td><td>{{ r.rows }}</td>
           <td>{% if r.first_date %}{{ r.first_date }} → {{ r.last_date }}{% else %}—{% endif %}</td><td style="white-space:normal;text-align:left;max-width:420px"><span class="note">{{ r.message }}</span></td></tr>
         {% endfor %}
       {% else %}

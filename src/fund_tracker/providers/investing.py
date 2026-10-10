@@ -129,7 +129,7 @@ def _fetch_screen(http: Http, pair_id: str, start: dt.date, end: dt.date) -> Ser
                 d = dt.datetime.fromtimestamp(int(item["date"]), dt.timezone.utc).date()
             except Exception:
                 continue
-            v = parse_number(str(item.get("price", "")))
+            v = parse_number(str(item.get("price", "")), decimal=".")
             if v:
                 out.append((d, v))
         chunk_start = chunk_end + dt.timedelta(days=1)

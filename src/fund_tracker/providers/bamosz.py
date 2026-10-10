@@ -64,7 +64,7 @@ def parse_download_csv(text: str) -> Series:
         if len(cells) <= max(date_idx, price_idx):
             continue
         d = parse_date(cells[date_idx])
-        v = parse_number(cells[price_idx])
+        v = parse_number(cells[price_idx], decimal=",")
         if d and v:
             rows.append((d, v))
     return dedupe_sorted(rows)
@@ -129,7 +129,7 @@ def parse_history_table(html: str) -> Series:
             if len(cells) <= max(date_idx, price_idx):
                 continue
             d = parse_date(cells[date_idx])
-            v = parse_number(cells[price_idx])
+            v = parse_number(cells[price_idx], decimal=",")
             if d and v:
                 rows.append((d, v))
         if rows:
@@ -147,7 +147,7 @@ def parse_latest(html: str) -> Series:
                 continue
             label = cells[0].lower()
             if price is None and any(k in label for k in PRICE_HEADERS):
-                price = parse_number(cells[1])
+                price = parse_number(cells[1], decimal=",")
             if date is None and any(k in label for k in DATE_HEADERS):
                 date = parse_date(cells[1])
     return [(date, price)] if price and date else []

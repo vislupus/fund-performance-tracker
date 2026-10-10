@@ -101,11 +101,13 @@ class Database:
             if nav is None or nav <= 0:
                 continue
             d = date.isoformat()
-            existing = cur.execute("SELECT source FROM nav WHERE isin=? AND date=?", (isin, d)).fetchone()
+            existing = cur.execute("SELECT source, nav FROM nav WHERE isin=? AND date=?", (isin, d)).fetchone()
             if existing is None:
                 cur.execute("INSERT INTO nav (isin, date, nav, source) VALUES (?, ?, ?, ?)", (isin, d, float(nav), source))
                 inserted += 1
-            elif source_priority(existing["source"]) < prio:
+            elif source_priority(existing["source"]) < prio or (
+                existing["source"] == source and abs(float(existing["nav"]) - float(nav)) > 1e-9
+            ):
                 cur.execute("UPDATE nav SET nav=?, source=? WHERE isin=? AND date=?", (float(nav), source, isin, d))
                 inserted += 1
         self.conn.commit()
@@ -128,6 +130,22 @@ class Database:
             "SELECT source, COUNT(*) AS n FROM nav WHERE isin=? GROUP BY source", (isin,)
         ).fetchall()
         return {r["source"]: int(r["n"]) for r in rows}
+
+    def delete_outliers(self, isin: str, factor: float = 3.0) -> list[tuple[dt.date, float]]:
+        """Remove isolated one-day spikes: a value more than `factor` times (or less than
+        1/factor of) BOTH neighbours. Such rows are parsing/publication glitches
+        (e.g. "1,003" read as 1003), never real fund prices."""
+        series = self.nav_series(isin)
+        bad: list[tuple[dt.date, float]] = []
+        for i in range(1, len(series) - 1):
+            prev, cur, nxt = series[i - 1][1], series[i][1], series[i + 1][1]
+            if (cur > prev * factor and cur > nxt * factor) or (cur < prev / factor and cur < nxt / factor):
+                bad.append(series[i])
+        for d, _ in bad:
+            self.conn.execute("DELETE FROM nav WHERE isin=? AND date=?", (isin, d.isoformat()))
+        if bad:
+            self.conn.commit()
+        return bad
 
     def delete_fund_navs(self, isin: str) -> int:
         cur = self.conn.execute("DELETE FROM nav WHERE isin=?", (isin,))
