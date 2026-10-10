@@ -1,0 +1,91 @@
+name: Monthly fund update
+
+on:
+  schedule:
+    # 1-во число на всеки месец, 06:30 UTC (данните за последния ден на месеца вече са публикувани)
+    - cron: "30 6 1 * *"
+  workflow_dispatch:
+    inputs:
+      full:
+        description: "Re-download the full history for every fund"
+        type: boolean
+        default: false
+      isin:
+        description: "Only these ISINs (space separated), empty = all"
+        type: string
+        default: ""
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: fund-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download NAV data
+        env:
+          PYTHONPATH: src
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.full }}" = "true" ]; then ARGS="$ARGS --full"; fi
+          if [ -n "${{ github.event.inputs.isin }}" ]; then ARGS="$ARGS --isin ${{ github.event.inputs.isin }}"; fi
+          python -m fund_tracker update $ARGS
+
+      - name: Build HTML report
+        env:
+          PYTHONPATH: src
+        run: python -m fund_tracker report
+
+      - name: Show database status
+        env:
+          PYTHONPATH: src
+        run: python -m fund_tracker status
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/funds.sqlite data/csv docs/index.html
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
+          else
+            git commit -m "Monthly update $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

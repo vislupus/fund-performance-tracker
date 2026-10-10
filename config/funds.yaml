@@ -1,0 +1,137 @@
+# Списък с фондове, които се следят.
+#
+# group:   portfolio  – фондове, в които реално инвестираш (влизат в "Моят портфейл")
+#          watchlist  – фондове, които обмисляш (следят се и се симулират, но не са в портфейла)
+#          benchmark  – сравнителен индекс/ETF
+# currency: валутата на класа дялове. За BGN NAV се преизчислява в EUR по фиксирания курс.
+# inception: дата на старт на фонда (само информативно; историята се сваля докъдето има данни)
+# entry_fee_pct: входна такса в проценти, прилага се в DCA симулацията (0 = без такса)
+# providers: ред на източниците, които се опитват. Ако липсва, се ползва ред по подразбиране
+#            според ISIN (HU → ft, investing, bamosz; BG → investing, ft; други → ft, investing, morningstar).
+# ids:      незадължителни "подсказки" към източниците, ако автоматичното търсене по ISIN
+#            намери грешен клас дялове:
+#              ft_symbol:          напр. "LU0106235533:EUR" или "EUNL:GER:EUR"
+#              investing_pair_id:  числовото pair_ID в Investing.com
+#              investing_query:    текст за търсене вместо ISIN
+#              morningstar_secid:  напр. "F0GBR04N6K"
+
+funds:
+  # ---------- Портфейл: по 10 EUR на месец ----------
+  - isin: HU0000733472
+    name: OTP Strategic EUR Bond Fund – EUR
+    currency: EUR
+    group: portfolio
+    inception: 2023-11-29
+    manager: OTP Fund Management
+  - isin: HU0000729793
+    name: OTP Multi-Asset Conservative – EUR
+    currency: EUR
+    group: portfolio
+    inception: 2022-08-26
+    manager: OTP Fund Management
+  - isin: HU0000735105
+    name: OTP USA Equity Fund – EUR
+    currency: EUR
+    group: portfolio
+    inception: 2024-07-01
+    manager: OTP Fund Management
+  - isin: HU0000729785
+    name: OTP Multi-Asset Dynamic – EUR
+    currency: EUR
+    group: portfolio
+    inception: 2022-08-26
+    manager: OTP Fund Management
+  - isin: HU0000729801
+    name: OTP Multi-Asset Balanced – EUR
+    currency: EUR
+    group: portfolio
+    inception: 2022-08-26
+    manager: OTP Fund Management
+  - isin: LU0106235533
+    name: Schroder ISF Euro Bond A Acc EUR
+    currency: EUR
+    group: portfolio
+    inception: 1999-01-01
+    manager: Schroders
+  - isin: LU1433245245
+    name: Amundi Funds Protect 90 A2 EUR
+    currency: EUR
+    group: portfolio
+    inception: 2016-06-30
+    manager: Amundi
+  - isin: LU1882445569
+    name: Amundi Funds China Equity A EUR (C)
+    currency: EUR
+    group: portfolio
+    inception: 2019-06-21
+    manager: Amundi
+  - isin: LU1883327816
+    name: Amundi Funds Global Multi-Asset A EUR (C)
+    currency: EUR
+    group: portfolio
+    inception: 2019-06-21
+    manager: Amundi
+  - isin: LU1883342377
+    name: Amundi Funds Global Equity A EUR (C)
+    currency: EUR
+    group: portfolio
+    inception: 2019-06-21
+    manager: Amundi
+
+  # ---------- Наблюдавани (обмислям ги) ----------
+  - isin: BG9000004051
+    name: ДСК Баланс
+    currency: BGN
+    group: watchlist
+    inception: 2006-01-01
+    manager: DSK Asset Management
+    providers: [investing, ft]
+  - isin: BG9000004069
+    name: ДСК Растеж
+    currency: BGN
+    group: watchlist
+    inception: 2006-03-01
+    manager: DSK Asset Management
+    providers: [investing, ft]
+  - isin: LU1910165726
+    name: Schroder ISF Global Innovation A Acc USD
+    currency: USD
+    group: watchlist
+    inception: 2018-12-12
+    manager: Schroders
+  - isin: LU2023678878
+    name: Amundi MSCI Digital Economy UCITS ETF Acc
+    currency: EUR
+    group: watchlist
+    inception: 2020-02-24
+    manager: Amundi
+    ids:
+      ft_symbol: "EBUY:PAR:EUR"
+  - isin: LU1548497699
+    name: Allianz Global Artificial Intelligence AT EUR
+    currency: EUR
+    group: watchlist
+    inception: 2017-05-02
+    manager: Allianz Global Investors
+  - isin: LU2860962120
+    name: CPR Invest – Artificial Intelligence A2 EUR Acc
+    currency: EUR
+    group: watchlist
+    inception: 2024-10-10
+    manager: CPR / Amundi
+  - isin: LU0099574567
+    name: Fidelity Funds – Global Technology A-DIST-EUR
+    currency: EUR
+    group: watchlist
+    inception: 1999-09-01
+    manager: Fidelity
+
+  # ---------- Бенчмарк ----------
+  - isin: IE00B4L5Y983
+    name: iShares Core MSCI World UCITS ETF (Acc) – EUR
+    currency: EUR
+    group: benchmark
+    inception: 2009-09-25
+    manager: BlackRock
+    ids:
+      ft_symbol: "EUNL:GER:EUR"
