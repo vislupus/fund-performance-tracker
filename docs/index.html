@@ -1,0 +1,1416 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fund Performance Tracker</title>
+<meta name="description" content="Месечна и годишна доходност на фондовете и симулация на покупки по 10.0 EUR на всяко 15-то число.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" crossorigin="anonymous"></script>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --card: #ffffff;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781; --grid: #e1e0d9; --axis: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --good: #006300; --bad: #d03b3b; --warn: #b36b00;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
+  --pos-1:#cde2fb; --pos-2:#9ec5f4; --pos-3:#5598e7; --pos-4:#1c5cab;
+  --neg-1:#f8d4d4; --neg-2:#f0a8a8; --neg-3:#e06c6c; --neg-4:#b22222;
+  --neutral: #f0efec;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --card:#1f1f1e;
+    --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781; --grid:#2c2c2a; --axis:#383835;
+    --border: rgba(255,255,255,0.10);
+    --good:#0ca30c; --bad:#e66767; --warn:#fab219;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+    --pos-1:#184f95; --pos-2:#1c5cab; --pos-3:#2a78d6; --pos-4:#5598e7;
+    --neg-1:#5a1f1f; --neg-2:#8a2e2e; --neg-3:#c04646; --neg-4:#e66767;
+    --neutral:#383835;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page:#0d0d0d; --surface:#1a1a19; --card:#1f1f1e;
+  --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781; --grid:#2c2c2a; --axis:#383835;
+  --border: rgba(255,255,255,0.10);
+  --good:#0ca30c; --bad:#e66767; --warn:#fab219;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --pos-1:#184f95; --pos-2:#1c5cab; --pos-3:#2a78d6; --pos-4:#5598e7;
+  --neg-1:#5a1f1f; --neg-2:#8a2e2e; --neg-3:#c04646; --neg-4:#e66767;
+  --neutral:#383835;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.45; }
+a { color: var(--s1); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 24px 16px 64px; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: baseline; justify-content: space-between; margin-bottom: 20px; }
+header.top h1 { font-size: 26px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+header.top .meta { color: var(--muted); font-size: 13px; }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 20px; }
+nav.tabs a { text-decoration: none; color: var(--ink-2); border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; font-size: 13px; background: var(--card); }
+nav.tabs a:hover { color: var(--ink); border-color: var(--axis); }
+section { margin-bottom: 40px; }
+h2 { font-size: 20px; font-weight: 650; margin: 0 0 12px; letter-spacing: -0.01em; }
+h3 { font-size: 16px; font-weight: 600; margin: 18px 0 8px; }
+p.lead { color: var(--ink-2); margin: 0 0 14px; max-width: 900px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.kpi { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+.kpi .value { font-size: 26px; font-weight: 650; margin-top: 4px; }
+.kpi .sub { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.chart-box { position: relative; height: 320px; }
+.chart-box.small { height: 220px; }
+.row { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 900px) { .row.two { grid-template-columns: 1fr 1fr; } }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; position: sticky; top: 0; background: var(--card); z-index: 1; }
+th:first-child, td:first-child { text-align: left; }
+th.sortable { cursor: pointer; }
+th.sortable:hover { color: var(--ink); }
+td.name { white-space: normal; min-width: 190px; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink-2); background: var(--surface); }
+.pill.ok { color: var(--good); } .pill.failed { color: var(--bad); } .pill.never { color: var(--warn); }
+.pill.portfolio { border-color: var(--s1); color: var(--s1); }
+.pill.watchlist { border-color: var(--s7); color: var(--s7); }
+.pill.benchmark { border-color: var(--s4); color: var(--s4); }
+.heat td { text-align: center; padding: 4px 6px; min-width: 52px; }
+.heat td.name { min-width: 230px; white-space: normal; }
+.heat td.v { color: var(--ink); border-radius: 4px; border-bottom: 2px solid var(--card); border-right: 2px solid var(--card); }
+.heat td.p1 { background: var(--pos-1); } .heat td.p2 { background: var(--pos-2); } .heat td.p3 { background: var(--pos-3); color:#fff; } .heat td.p4 { background: var(--pos-4); color:#fff; }
+.heat td.n1 { background: var(--neg-1); } .heat td.n2 { background: var(--neg-2); } .heat td.n3 { background: var(--neg-3); color:#fff; } .heat td.n4 { background: var(--neg-4); color:#fff; }
+.heat td.z { background: var(--neutral); }
+.heat td.partial { font-style: italic; opacity: 0.85; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 10px; font-size: 13px; }
+.controls label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; color: var(--ink-2); }
+.controls .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; background: var(--axis); }
+.controls button, .seg button { background: var(--card); color: var(--ink-2); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+.seg button.on { color: var(--ink); border-color: var(--axis); font-weight: 600; }
+.fund { margin-bottom: 20px; }
+.fund summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; padding: 12px 16px; }
+.fund summary::-webkit-details-marker { display: none; }
+.fund summary h3 { margin: 0; font-size: 16px; }
+.fund summary .mini { color: var(--muted); font-size: 13px; }
+.fund .body { padding: 0 16px 16px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px 12px; margin: 10px 0 14px; }
+.stats > div { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.stats .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
+.stats .val { font-size: 16px; font-weight: 600; }
+.stats .sub { color: var(--muted); font-size: 11px; }
+details.inner summary { cursor: pointer; color: var(--ink-2); font-size: 13px; padding: 6px 0; }
+.note { color: var(--muted); font-size: 12.5px; }
+.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.empty { color: var(--muted); font-style: italic; }
+.theme-toggle { font-size: 12px; background: none; border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; color: var(--ink-2); cursor: pointer; }
+ul.method { color: var(--ink-2); font-size: 13.5px; padding-left: 20px; }
+ul.method li { margin-bottom: 4px; }
+.notice { border-left: 3px solid var(--warn); padding: 8px 12px; background: var(--surface); border-radius: 0 8px 8px 0; font-size: 13.5px; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>Fund Performance Tracker</h1>
+    <div class="meta">Генериран: 2026-10-10 08:18 UTC · 18 фонда · версия 1.0.0</div>
+  </div>
+  <div><button class="theme-toggle" id="themeToggle" type="button">Тъмна/светла тема</button></div>
+</header>
+<nav class="tabs">
+  <a href="#portfolio">Моят портфейл</a>
+  <a href="#overview">Преглед на фондовете</a>
+  <a href="#yearly">Доходност по години</a>
+  <a href="#compare">Сравнение</a>
+  <a href="#funds">Фондове по отделно</a>
+  <a href="#status">Данни и източници</a>
+  <a href="#method">Методика</a>
+</nav>
+
+
+
+
+<div class="notice">За 18 фонда все още няма данни в базата:
+  <strong>OTP Strategic EUR Bond Fund – EUR</strong>, <strong>OTP Multi-Asset Conservative – EUR</strong>, <strong>OTP USA Equity Fund – EUR</strong>, <strong>OTP Multi-Asset Dynamic – EUR</strong>, <strong>OTP Multi-Asset Balanced – EUR</strong>, <strong>Schroder ISF Euro Bond A Acc EUR</strong>, <strong>Amundi Funds Protect 90 A2 EUR</strong>, <strong>Amundi Funds China Equity A EUR (C)</strong>, <strong>Amundi Funds Global Multi-Asset A EUR (C)</strong>, <strong>Amundi Funds Global Equity A EUR (C)</strong>, <strong>ДСК Баланс</strong>, <strong>ДСК Растеж</strong>, <strong>Schroder ISF Global Innovation A Acc USD</strong>, <strong>Amundi MSCI Digital Economy UCITS ETF Acc</strong>, <strong>Allianz Global Artificial Intelligence AT EUR</strong>, <strong>CPR Invest – Artificial Intelligence A2 EUR Acc</strong>, <strong>Fidelity Funds – Global Technology A-DIST-EUR</strong>, <strong>iShares Core MSCI World UCITS ETF (Acc) – EUR</strong>.
+  Виж раздела <a href="#status">Данни и източници</a>.</div>
+
+
+<!-- ============================ PORTFOLIO ============================ -->
+<section id="portfolio">
+  <h2>Моят портфейл – симулация на плана</h2>
+  <p class="lead">По 10 EUR във всеки от портфейлните фондове на всяко 15-то число (или първия следващ ден с цена), от 2025-10-15 до последната налична цена.
+  </p>
+  
+  
+  <div class="card empty">Все още няма данни за портфейлните фондове след 2025-10-15.</div>
+  
+</section>
+
+<!-- ============================ OVERVIEW ============================ -->
+<section id="overview">
+  <h2>Преглед на фондовете</h2>
+  <p class="lead">Доходност на самия фонд (NAV към NAV) за стандартни периоди, риск и резултат от симулацията „по 10 на месец от самото начало на фонда“. Кликни върху заглавие на колона за сортиране.</p>
+  <div class="table-wrap card">
+  <table id="overviewTable">
+    <thead><tr>
+      <th class="sortable" data-k="name" data-t="s">Фонд</th><th>Група</th><th class="sortable" data-k="last_date" data-t="s">Последна цена</th>
+      <th class="sortable" data-k="ytd">YTD</th><th class="sortable" data-k="r1y">1 г.</th><th class="sortable" data-k="r3y">3 г. (год.)</th><th class="sortable" data-k="r5y">5 г. (год.)</th><th class="sortable" data-k="rinc">От начало (год.)</th>
+      <th class="sortable" data-k="vol">Волат.</th><th class="sortable" data-k="dd">Макс. спад</th>
+      <th class="sortable" data-k="dca_xirr">DCA XIRR</th><th class="sortable" data-k="dca_pnl">DCA П/З %</th><th class="sortable" data-k="first_date" data-t="s">Данни от</th><th>Статус</th>
+    </tr></thead>
+    <tbody>
+    
+      
+      <tr data-name="OTP Strategic EUR Bond Fund – EUR" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-HU0000733472">OTP Strategic EUR Bond Fund – EUR</a><br><span class="note">HU0000733472 · EUR</span></td>
+        <td><span class="pill portfolio">Портфейл</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="OTP Multi-Asset Conservative – EUR" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-HU0000729793">OTP Multi-Asset Conservative – EUR</a><br><span class="note">HU0000729793 · EUR</span></td>
+        <td><span class="pill portfolio">Портфейл</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="OTP USA Equity Fund – EUR" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-HU0000735105">OTP USA Equity Fund – EUR</a><br><span class="note">HU0000735105 · EUR</span></td>
+        <td><span class="pill portfolio">Портфейл</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="OTP Multi-Asset Dynamic – EUR" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-HU0000729785">OTP Multi-Asset Dynamic – EUR</a><br><span class="note">HU0000729785 · EUR</span></td>
+        <td><span class="pill portfolio">Портфейл</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="OTP Multi-Asset Balanced – EUR" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-HU0000729801">OTP Multi-Asset Balanced – EUR</a><br><span class="note">HU0000729801 · EUR</span></td>
+        <td><span class="pill portfolio">Портфейл</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="Schroder ISF Euro Bond A Acc EUR" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-LU0106235533">Schroder ISF Euro Bond A Acc EUR</a><br><span class="note">LU0106235533 · EUR</span></td>
+        <td><span class="pill portfolio">Портфейл</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="Amundi Funds Protect 90 A2 EUR" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-LU1433245245">Amundi Funds Protect 90 A2 EUR</a><br><span class="note">LU1433245245 · EUR</span></td>
+        <td><span class="pill portfolio">Портфейл</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="Amundi Funds China Equity A EUR (C)" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-LU1882445569">Amundi Funds China Equity A EUR (C)</a><br><span class="note">LU1882445569 · EUR</span></td>
+        <td><span class="pill portfolio">Портфейл</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="Amundi Funds Global Multi-Asset A EUR (C)" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-LU1883327816">Amundi Funds Global Multi-Asset A EUR (C)</a><br><span class="note">LU1883327816 · EUR</span></td>
+        <td><span class="pill portfolio">Портфейл</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="Amundi Funds Global Equity A EUR (C)" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-LU1883342377">Amundi Funds Global Equity A EUR (C)</a><br><span class="note">LU1883342377 · EUR</span></td>
+        <td><span class="pill portfolio">Портфейл</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="ДСК Баланс" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-BG9000004051">ДСК Баланс</a><br><span class="note">BG9000004051 · BGN → EUR</span></td>
+        <td><span class="pill watchlist">Наблюдавани</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="ДСК Растеж" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-BG9000004069">ДСК Растеж</a><br><span class="note">BG9000004069 · BGN → EUR</span></td>
+        <td><span class="pill watchlist">Наблюдавани</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="Schroder ISF Global Innovation A Acc USD" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-LU1910165726">Schroder ISF Global Innovation A Acc USD</a><br><span class="note">LU1910165726 · USD</span></td>
+        <td><span class="pill watchlist">Наблюдавани</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="Amundi MSCI Digital Economy UCITS ETF Acc" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-LU2023678878">Amundi MSCI Digital Economy UCITS ETF Acc</a><br><span class="note">LU2023678878 · EUR</span></td>
+        <td><span class="pill watchlist">Наблюдавани</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="Allianz Global Artificial Intelligence AT EUR" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-LU1548497699">Allianz Global Artificial Intelligence AT EUR</a><br><span class="note">LU1548497699 · EUR</span></td>
+        <td><span class="pill watchlist">Наблюдавани</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="CPR Invest – Artificial Intelligence A2 EUR Acc" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-LU2860962120">CPR Invest – Artificial Intelligence A2 EUR Acc</a><br><span class="note">LU2860962120 · EUR</span></td>
+        <td><span class="pill watchlist">Наблюдавани</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="Fidelity Funds – Global Technology A-DIST-EUR" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-LU0099574567">Fidelity Funds – Global Technology A-DIST-EUR</a><br><span class="note">LU0099574567 · EUR</span></td>
+        <td><span class="pill watchlist">Наблюдавани</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+      
+      <tr data-name="iShares Core MSCI World UCITS ETF (Acc) – EUR" data-last_date="" data-first_date=""
+          data-ytd="" data-r1y=""
+          data-r3y="" data-r5y=""
+          data-rinc=""
+          data-vol="" data-dd=""
+          data-dca_xirr="" data-dca_pnl="">
+        <td class="name"><a href="#f-IE00B4L5Y983">iShares Core MSCI World UCITS ETF (Acc) – EUR</a><br><span class="note">IE00B4L5Y983 · EUR</span></td>
+        <td><span class="pill benchmark">Бенчмарк</span></td>
+        <td>—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+          
+          <td class="">—</td>
+        
+        
+        <td class="">—</td>
+        <td>—</td>
+        <td class="neg">—</td>
+        <td class="pos">—</td>
+        <td class="pos">—</td>
+        <td>—<br><span class="note">0 цени</span></td>
+        <td><span class="pill never">няма</span></td>
+      </tr>
+    
+    </tbody>
+  </table>
+  </div>
+  <p class="note">Волатилност = годишно стандартно отклонение на месечните доходности. Макс. спад = най-голямото падане от връх до дъно. DCA XIRR = годишна доходност, претеглена по пари, при покупки от първата налична цена на фонда.</p>
+</section>
+
+<!-- ============================ YEARLY ============================ -->
+<section id="yearly">
+  <h2>Доходност по календарни години</h2>
+  <p class="lead">Промяна на цената на дял от последната цена на предходната година до последната цена на годината. <em>Курсив</em> = непълна година (фондът е стартирал през годината или годината още не е приключила).</p>
+  <div class="table-wrap card">
+  <table class="heat">
+    <thead><tr><th>Фонд</th></tr></thead>
+    <tbody>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-HU0000733472">OTP Strategic EUR Bond Fund – EUR</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-HU0000729793">OTP Multi-Asset Conservative – EUR</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-HU0000735105">OTP USA Equity Fund – EUR</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-HU0000729785">OTP Multi-Asset Dynamic – EUR</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-HU0000729801">OTP Multi-Asset Balanced – EUR</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-LU0106235533">Schroder ISF Euro Bond A Acc EUR</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-LU1433245245">Amundi Funds Protect 90 A2 EUR</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-LU1882445569">Amundi Funds China Equity A EUR (C)</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-LU1883327816">Amundi Funds Global Multi-Asset A EUR (C)</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-LU1883342377">Amundi Funds Global Equity A EUR (C)</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-BG9000004051">ДСК Баланс</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-BG9000004069">ДСК Растеж</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-LU1910165726">Schroder ISF Global Innovation A Acc USD</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-LU2023678878">Amundi MSCI Digital Economy UCITS ETF Acc</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-LU1548497699">Allianz Global Artificial Intelligence AT EUR</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-LU2860962120">CPR Invest – Artificial Intelligence A2 EUR Acc</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-LU0099574567">Fidelity Funds – Global Technology A-DIST-EUR</a></td>
+      </tr>
+    
+      
+      <tr><td class="name" style="text-align:left"><a href="#f-IE00B4L5Y983">iShares Core MSCI World UCITS ETF (Acc) – EUR</a></td>
+      </tr>
+    
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============================ COMPARE ============================ -->
+<section id="compare">
+  <h2>Сравнение – всички започват от 100</h2>
+  <p class="lead">Цената на дял е приведена към 100 в началото на избрания период, за да се види кой фонд е спечелил повече, независимо от номиналната цена. Избери до 8 фонда.</p>
+  <div class="card">
+    <div class="controls seg" id="rangeSeg">
+      <span>Период:</span>
+      <button data-r="plan">От плана (2025)</button>
+      <button data-r="1y">1 г.</button><button data-r="3y" class="on">3 г.</button><button data-r="5y">5 г.</button><button data-r="10y">10 г.</button><button data-r="max">Макс.</button>
+    </div>
+    <div class="controls" id="fundPicker"></div>
+    <div class="chart-box"><canvas id="compareChart" role="img" aria-label="Сравнение на фондовете, индексирани към 100"></canvas></div>
+    <p class="note" id="compareNote"></p>
+  </div>
+</section>
+
+<!-- ============================ FUNDS ============================ -->
+<section id="funds">
+  <h2>Фондове по отделно</h2>
+  
+  <details class="fund card" id="f-HU0000733472" open>
+    <summary>
+      <h3>OTP Strategic EUR Bond Fund – EUR</h3>
+      <span class="pill portfolio">Портфейл</span>
+      <span class="mini">HU0000733472 · EUR · OTP Fund Management</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-HU0000729793" open>
+    <summary>
+      <h3>OTP Multi-Asset Conservative – EUR</h3>
+      <span class="pill portfolio">Портфейл</span>
+      <span class="mini">HU0000729793 · EUR · OTP Fund Management</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-HU0000735105" open>
+    <summary>
+      <h3>OTP USA Equity Fund – EUR</h3>
+      <span class="pill portfolio">Портфейл</span>
+      <span class="mini">HU0000735105 · EUR · OTP Fund Management</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-HU0000729785" >
+    <summary>
+      <h3>OTP Multi-Asset Dynamic – EUR</h3>
+      <span class="pill portfolio">Портфейл</span>
+      <span class="mini">HU0000729785 · EUR · OTP Fund Management</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-HU0000729801" >
+    <summary>
+      <h3>OTP Multi-Asset Balanced – EUR</h3>
+      <span class="pill portfolio">Портфейл</span>
+      <span class="mini">HU0000729801 · EUR · OTP Fund Management</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-LU0106235533" >
+    <summary>
+      <h3>Schroder ISF Euro Bond A Acc EUR</h3>
+      <span class="pill portfolio">Портфейл</span>
+      <span class="mini">LU0106235533 · EUR · Schroders</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-LU1433245245" >
+    <summary>
+      <h3>Amundi Funds Protect 90 A2 EUR</h3>
+      <span class="pill portfolio">Портфейл</span>
+      <span class="mini">LU1433245245 · EUR · Amundi</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-LU1882445569" >
+    <summary>
+      <h3>Amundi Funds China Equity A EUR (C)</h3>
+      <span class="pill portfolio">Портфейл</span>
+      <span class="mini">LU1882445569 · EUR · Amundi</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-LU1883327816" >
+    <summary>
+      <h3>Amundi Funds Global Multi-Asset A EUR (C)</h3>
+      <span class="pill portfolio">Портфейл</span>
+      <span class="mini">LU1883327816 · EUR · Amundi</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-LU1883342377" >
+    <summary>
+      <h3>Amundi Funds Global Equity A EUR (C)</h3>
+      <span class="pill portfolio">Портфейл</span>
+      <span class="mini">LU1883342377 · EUR · Amundi</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-BG9000004051" >
+    <summary>
+      <h3>ДСК Баланс</h3>
+      <span class="pill watchlist">Наблюдавани</span>
+      <span class="mini">BG9000004051 · BGN (показано в EUR) · DSK Asset Management</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-BG9000004069" >
+    <summary>
+      <h3>ДСК Растеж</h3>
+      <span class="pill watchlist">Наблюдавани</span>
+      <span class="mini">BG9000004069 · BGN (показано в EUR) · DSK Asset Management</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-LU1910165726" >
+    <summary>
+      <h3>Schroder ISF Global Innovation A Acc USD</h3>
+      <span class="pill watchlist">Наблюдавани</span>
+      <span class="mini">LU1910165726 · USD · Schroders</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-LU2023678878" >
+    <summary>
+      <h3>Amundi MSCI Digital Economy UCITS ETF Acc</h3>
+      <span class="pill watchlist">Наблюдавани</span>
+      <span class="mini">LU2023678878 · EUR · Amundi</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-LU1548497699" >
+    <summary>
+      <h3>Allianz Global Artificial Intelligence AT EUR</h3>
+      <span class="pill watchlist">Наблюдавани</span>
+      <span class="mini">LU1548497699 · EUR · Allianz Global Investors</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-LU2860962120" >
+    <summary>
+      <h3>CPR Invest – Artificial Intelligence A2 EUR Acc</h3>
+      <span class="pill watchlist">Наблюдавани</span>
+      <span class="mini">LU2860962120 · EUR · CPR / Amundi</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-LU0099574567" >
+    <summary>
+      <h3>Fidelity Funds – Global Technology A-DIST-EUR</h3>
+      <span class="pill watchlist">Наблюдавани</span>
+      <span class="mini">LU0099574567 · EUR · Fidelity</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+  <details class="fund card" id="f-IE00B4L5Y983" >
+    <summary>
+      <h3>iShares Core MSCI World UCITS ETF (Acc) – EUR</h3>
+      <span class="pill benchmark">Бенчмарк</span>
+      <span class="mini">IE00B4L5Y983 · EUR · BlackRock</span>
+      
+      
+    </summary>
+    <div class="body">
+    
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    
+    </div>
+  </details>
+  
+</section>
+
+<!-- ============================ STATUS ============================ -->
+<section id="status">
+  <h2>Данни и източници</h2>
+  <p class="lead">Резултат от последното обновяване. Всеки фонд се опитва през няколко източника по ред; първият, който върне история, се записва. Ако всички се провалят, свали CSV ръчно в <code>data/manual/&lt;ISIN&gt;.csv</code>.</p>
+  <div class="table-wrap card">
+  <table>
+    <thead><tr><th>Фонд</th><th>Източник</th><th>Резултат</th><th>Нови редове</th><th>Период</th><th>Съобщение</th></tr></thead>
+    <tbody>
+    
+      
+        <tr><td class="name">OTP Strategic EUR Bond Fund – EUR<br><span class="note">HU0000733472</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">OTP Multi-Asset Conservative – EUR<br><span class="note">HU0000729793</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">OTP USA Equity Fund – EUR<br><span class="note">HU0000735105</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">OTP Multi-Asset Dynamic – EUR<br><span class="note">HU0000729785</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">OTP Multi-Asset Balanced – EUR<br><span class="note">HU0000729801</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">Schroder ISF Euro Bond A Acc EUR<br><span class="note">LU0106235533</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">Amundi Funds Protect 90 A2 EUR<br><span class="note">LU1433245245</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">Amundi Funds China Equity A EUR (C)<br><span class="note">LU1882445569</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">Amundi Funds Global Multi-Asset A EUR (C)<br><span class="note">LU1883327816</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">Amundi Funds Global Equity A EUR (C)<br><span class="note">LU1883342377</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">ДСК Баланс<br><span class="note">BG9000004051</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">ДСК Растеж<br><span class="note">BG9000004069</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">Schroder ISF Global Innovation A Acc USD<br><span class="note">LU1910165726</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">Amundi MSCI Digital Economy UCITS ETF Acc<br><span class="note">LU2023678878</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">Allianz Global Artificial Intelligence AT EUR<br><span class="note">LU1548497699</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">CPR Invest – Artificial Intelligence A2 EUR Acc<br><span class="note">LU2860962120</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">Fidelity Funds – Global Technology A-DIST-EUR<br><span class="note">LU0099574567</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+      
+        <tr><td class="name">iShares Core MSCI World UCITS ETF (Acc) – EUR<br><span class="note">IE00B4L5Y983</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      
+    
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============================ METHOD ============================ -->
+<section id="method">
+  <h2>Методика и уговорки</h2>
+  <ul class="method">
+    <li><strong>Цени.</strong> Дневни нетни стойности на дял (NAV) от Financial Times, Investing.com, BAMOSZ, Morningstar или ръчно свалени CSV файлове. Данните се пазят в <code>data/funds.sqlite</code> и се експортират в <code>data/csv/</code>.</li>
+    <li><strong>Доходност на фонда</strong> е промяна на NAV. Тя не включва входни/изходни такси на банката-дистрибутор, нито данъци. Таксите за управление вече са отразени в NAV.</li>
+    <li><strong>DCA симулация.</strong> Всеки месец на 15-то число (или първия следващ ден с цена през същия месец) се купуват дялове за 10 по цената за деня. Ако в <code>config/funds.yaml</code> е зададена <code>entry_fee_pct</code>, тя се удържа от сумата преди покупката.</li>
+    <li><strong>XIRR</strong> е вътрешната норма на възвръщаемост на реалните парични потоци (всички покупки като разходи, текущата стойност като приход) – това е доходността, която усещаш като инвеститор, за разлика от доходността на фонда.</li>
+    <li><strong>Реален портфейл.</strong> Ако попълниш <code>data/transactions.csv</code> с датите и сумите на реалните си покупки, отчетът показва и тях – така можеш да сравниш реалния резултат със симулацията.</li>
+    <li><strong>BGN фондове</strong> се преизчисляват в EUR по фиксирания курс 1.95583. Ако източникът вече дава част от историята в евро (скок с множител 1/1.95583), се преизчислява само частта в лева. Фондове в USD се симулират в USD.</li>
+    <li>Миналото представяне не гарантира бъдещи резултати. Това е личен инструмент за анализ, не инвестиционен съвет.</li>
+  </ul>
+</section>
+</div>
+
+<script type="application/json" id="data">{"settings":{"monthly_amount":10.0,"purchase_day":15,"my_plan_start":"2025-10-15","title":"Fund Performance Tracker","default_compare":6,"bgn_per_eur":1.95583},"funds":[{"isin":"HU0000733472","name":"OTP Strategic EUR Bond Fund – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"HU0000729793","name":"OTP Multi-Asset Conservative – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"HU0000735105","name":"OTP USA Equity Fund – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"HU0000729785","name":"OTP Multi-Asset Dynamic – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"HU0000729801","name":"OTP Multi-Asset Balanced – EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU0106235533","name":"Schroder ISF Euro Bond A Acc EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1433245245","name":"Amundi Funds Protect 90 A2 EUR","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1882445569","name":"Amundi Funds China Equity A EUR (C)","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1883327816","name":"Amundi Funds Global Multi-Asset A EUR (C)","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1883342377","name":"Amundi Funds Global Equity A EUR (C)","group":"portfolio","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"BG9000004051","name":"ДСК Баланс","group":"watchlist","currency":"BGN","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"BG9000004069","name":"ДСК Растеж","group":"watchlist","currency":"BGN","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1910165726","name":"Schroder ISF Global Innovation A Acc USD","group":"watchlist","currency":"USD","dca_currency":"USD","nav_currency":"USD","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU2023678878","name":"Amundi MSCI Digital Economy UCITS ETF Acc","group":"watchlist","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU1548497699","name":"Allianz Global Artificial Intelligence AT EUR","group":"watchlist","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU2860962120","name":"CPR Invest – Artificial Intelligence A2 EUR Acc","group":"watchlist","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"LU0099574567","name":"Fidelity Funds – Global Technology A-DIST-EUR","group":"watchlist","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}},{"isin":"IE00B4L5Y983","name":"iShares Core MSCI World UCITS ETF (Acc) – EUR","group":"benchmark","currency":"EUR","dca_currency":"EUR","nav_currency":"EUR","nav":[],"nav_m":[],"dca_full":{"value_series":[]},"dca_plan":{"value_series":[]}}],"portfolio":{"value_series":[]}}</script>
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById('data').textContent);
+  const SLOTS = ['--s1','--s2','--s3','--s4','--s5','--s6','--s7','--s8'];
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const fmtPct = (v, nd = 1) => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(nd) + '%';
+  const fmtNum = (v, nd = 2) => v == null ? '—' : v.toLocaleString('bg-BG', { minimumFractionDigits: nd, maximumFractionDigits: nd });
+  const byIsin = {}; DATA.funds.forEach(f => byIsin[f.isin] = f);
+
+  // ---- theme toggle
+  const root = document.documentElement;
+  const toggle = document.getElementById('themeToggle');
+  try { const t = localStorage.getItem('fpt-theme'); if (t) root.setAttribute('data-theme', t); } catch (e) {}
+  toggle.addEventListener('click', () => {
+    const dark = root.getAttribute('data-theme') === 'dark' || (!root.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
+    const next = dark ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('fpt-theme', next); } catch (e) {}
+    rebuildAll();
+  });
+
+  // ---- Chart.js defaults
+  function baseOptions(yFmt) {
+    return {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', align: 'end', labels: { color: css('--ink-2'), boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: 'rectRounded', font: { size: 12 } } },
+        tooltip: { backgroundColor: css('--card'), titleColor: css('--ink'), bodyColor: css('--ink-2'), borderColor: css('--border'), borderWidth: 1, padding: 10,
+          callbacks: { label: (c) => ` ${c.dataset.label}: ${yFmt(c.parsed.y)}` } },
+      },
+      elements: { line: { borderWidth: 2, tension: 0 }, point: { radius: 0, hitRadius: 8, hoverRadius: 4 } },
+      scales: {
+        x: { ticks: { color: css('--muted'), maxTicksLimit: 8, maxRotation: 0, autoSkip: true, callback: function (v) { const l = this.getLabelForValue(v); return l ? l.slice(0, 7) : ''; } }, grid: { display: false }, border: { color: css('--axis') } },
+        y: { ticks: { color: css('--muted'), callback: (v) => yFmt(v) }, grid: { color: css('--grid') }, border: { display: false } },
+      },
+    };
+  }
+  const charts = [];
+  function makeChart(canvas, config) { const c = new Chart(canvas, config); charts.push(c); return c; }
+  function destroyAll() { charts.splice(0).forEach(c => c.destroy()); }
+
+  // ---- portfolio chart
+  function buildPortfolio() {
+    const el = document.getElementById('portfolioChart');
+    if (!el || !DATA.portfolio.value_series || !DATA.portfolio.value_series.length) return;
+    const vs = DATA.portfolio.value_series;
+    makeChart(el, {
+      type: 'line',
+      data: { labels: vs.map(r => r[0]), datasets: [
+        { label: 'Стойност на портфейла', data: vs.map(r => r[1]), borderColor: css('--s1'), backgroundColor: css('--s1'), fill: false },
+        { label: 'Вложени пари', data: vs.map(r => r[2]), borderColor: css('--muted'), backgroundColor: css('--muted'), borderDash: [4, 3], stepped: true, fill: false },
+      ] },
+      options: baseOptions(v => fmtNum(v, 2) + ' €'),
+    });
+  }
+
+  // ---- per-fund charts
+  function buildFundCharts() {
+    document.querySelectorAll('canvas.navChart').forEach(el => {
+      const f = byIsin[el.dataset.isin]; if (!f || !f.nav.length) return;
+      makeChart(el, { type: 'line', data: { labels: f.nav.map(r => r[0]), datasets: [{ label: 'NAV ' + (f.nav_currency || f.currency), data: f.nav.map(r => r[1]), borderColor: css('--s1'), backgroundColor: css('--s1') }] },
+        options: Object.assign(baseOptions(v => fmtNum(v, 4)), { plugins: Object.assign(baseOptions(v => v).plugins, { legend: { display: false } }) }) });
+    });
+    document.querySelectorAll('canvas.dcaChart').forEach(el => {
+      const f = byIsin[el.dataset.isin]; if (!f) return;
+      const vs = f.dca_full.value_series; if (!vs || !vs.length) return;
+      makeChart(el, { type: 'line', data: { labels: vs.map(r => r[0]), datasets: [
+        { label: 'Стойност', data: vs.map(r => r[1]), borderColor: css('--s1'), backgroundColor: css('--s1') },
+        { label: 'Вложени', data: vs.map(r => r[2]), borderColor: css('--muted'), backgroundColor: css('--muted'), borderDash: [4, 3], stepped: true },
+      ] }, options: baseOptions(v => fmtNum(v, 0) + ' ' + f.dca_currency) });
+    });
+  }
+
+  // ---- comparison chart (indexed to 100, month-end data)
+  const picker = document.getElementById('fundPicker');
+  const note = document.getElementById('compareNote');
+  let range = '3y';
+  const selected = new Map(); // isin -> slot index
+  const defaults = DATA.funds.filter(f => f.nav_m.length > 1).slice(0, Math.min(8, DATA.settings.default_compare || 6));
+  const bench = DATA.funds.find(f => f.group === 'benchmark' && f.nav_m.length > 1);
+  if (bench && !defaults.includes(bench)) { if (defaults.length >= 8) defaults.pop(); defaults.push(bench); }
+  defaults.forEach(f => selected.set(f.isin, freeSlot()));
+  function freeSlot() { const used = new Set(selected.values()); for (let i = 0; i < 8; i++) if (!used.has(i)) return i; return -1; }
+
+  function renderPicker() {
+    picker.innerHTML = '';
+    DATA.funds.forEach(f => {
+      if (!f.nav_m || f.nav_m.length < 2) return;
+      const lab = document.createElement('label');
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = selected.has(f.isin);
+      cb.disabled = !cb.checked && selected.size >= 8;
+      cb.addEventListener('change', () => {
+        if (cb.checked) { const s = freeSlot(); if (s < 0) { cb.checked = false; return; } selected.set(f.isin, s); }
+        else selected.delete(f.isin);
+        renderPicker(); buildCompare();
+      });
+      const sw = document.createElement('span'); sw.className = 'sw';
+      if (selected.has(f.isin)) sw.style.background = css(SLOTS[selected.get(f.isin)]);
+      lab.append(cb, sw, document.createTextNode(f.name));
+      picker.appendChild(lab);
+    });
+  }
+  function rangeStart(lastDate) {
+    const d = new Date(lastDate);
+    if (range === 'plan') return DATA.settings.my_plan_start;
+    if (range === 'max') return '1900-01-01';
+    const years = { '1y': 1, '3y': 3, '5y': 5, '10y': 10 }[range];
+    d.setFullYear(d.getFullYear() - years);
+    return d.toISOString().slice(0, 10);
+  }
+  let compareChart = null;
+  function buildCompare() {
+    const el = document.getElementById('compareChart');
+    if (compareChart) { compareChart.destroy(); charts.splice(charts.indexOf(compareChart), 1); compareChart = null; }
+    const funds = [...selected.keys()].map(i => byIsin[i]).filter(Boolean);
+    if (!funds.length) { note.textContent = 'Избери поне един фонд.'; return; }
+    const lastDate = funds.map(f => f.nav_m[f.nav_m.length - 1][0]).sort().pop();
+    const start = rangeStart(lastDate);
+    const labelSet = new Set();
+    const series = funds.map(f => {
+      const pts = f.nav_m.filter(r => r[0] >= start.slice(0, 7));
+      if (pts.length < 2) return null;
+      const base = pts[0][1];
+      const map = {}; pts.forEach(r => { map[r[0].slice(0, 7)] = r[1] / base * 100; labelSet.add(r[0].slice(0, 7)); });
+      return { f, map, from: pts[0][0] };
+    }).filter(Boolean);
+    const labels = [...labelSet].sort();
+    const partial = series.filter(s => s.from > start && range !== 'max').map(s => `${s.f.name} (от ${s.from})`);
+    note.textContent = partial.length ? 'Фондове с по-къса история започват от 100 на първата си цена в периода: ' + partial.join('; ') : '';
+    compareChart = makeChart(el, {
+      type: 'line',
+      data: { labels, datasets: series.map(s => ({
+        label: s.f.name, data: labels.map(l => s.map[l] ?? null), spanGaps: true,
+        borderColor: css(SLOTS[selected.get(s.f.isin)]), backgroundColor: css(SLOTS[selected.get(s.f.isin)]),
+        borderDash: s.f.group === 'benchmark' ? [6, 4] : undefined,
+      })) },
+      options: baseOptions(v => fmtNum(v, 1)),
+    });
+  }
+  document.querySelectorAll('#rangeSeg button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#rangeSeg button').forEach(x => x.classList.remove('on')); b.classList.add('on'); range = b.dataset.r; buildCompare();
+  }));
+
+  // ---- sortable overview
+  (function () {
+    const table = document.getElementById('overviewTable'); if (!table) return;
+    const tbody = table.querySelector('tbody');
+    table.querySelectorAll('th.sortable').forEach(th => {
+      let dir = -1;
+      th.addEventListener('click', () => {
+        const k = th.dataset.k, t = th.dataset.t || 'n';
+        const rows = [...tbody.querySelectorAll('tr')];
+        rows.sort((a, b) => {
+          const av = a.dataset[k], bv = b.dataset[k];
+          if (av === '' && bv === '') return 0; if (av === '') return 1; if (bv === '') return -1;
+          return t === 's' ? av.localeCompare(bv) * dir : (parseFloat(av) - parseFloat(bv)) * dir;
+        });
+        rows.forEach(r => tbody.appendChild(r)); dir = -dir;
+      });
+    });
+  })();
+
+  function rebuildAll() { destroyAll(); compareChart = null; buildPortfolio(); buildFundCharts(); renderPicker(); buildCompare(); }
+  if (window.Chart) { rebuildAll(); } else { note.textContent = 'Chart.js не се зареди (няма интернет?). Таблиците работят без графики.'; renderPicker(); }
+})();
+</script>
+</body>
+</html>

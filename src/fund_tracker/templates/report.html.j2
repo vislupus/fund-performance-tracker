@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ m.settings.title }}</title>
+<meta name="description" content="Месечна и годишна доходност на фондовете и симулация на покупки по {{ m.settings.monthly_amount }} EUR на всяко {{ m.settings.purchase_day }}-то число.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" crossorigin="anonymous"></script>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --card: #ffffff;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781; --grid: #e1e0d9; --axis: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --good: #006300; --bad: #d03b3b; --warn: #b36b00;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
+  --pos-1:#cde2fb; --pos-2:#9ec5f4; --pos-3:#5598e7; --pos-4:#1c5cab;
+  --neg-1:#f8d4d4; --neg-2:#f0a8a8; --neg-3:#e06c6c; --neg-4:#b22222;
+  --neutral: #f0efec;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --card:#1f1f1e;
+    --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781; --grid:#2c2c2a; --axis:#383835;
+    --border: rgba(255,255,255,0.10);
+    --good:#0ca30c; --bad:#e66767; --warn:#fab219;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+    --pos-1:#184f95; --pos-2:#1c5cab; --pos-3:#2a78d6; --pos-4:#5598e7;
+    --neg-1:#5a1f1f; --neg-2:#8a2e2e; --neg-3:#c04646; --neg-4:#e66767;
+    --neutral:#383835;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page:#0d0d0d; --surface:#1a1a19; --card:#1f1f1e;
+  --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781; --grid:#2c2c2a; --axis:#383835;
+  --border: rgba(255,255,255,0.10);
+  --good:#0ca30c; --bad:#e66767; --warn:#fab219;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --pos-1:#184f95; --pos-2:#1c5cab; --pos-3:#2a78d6; --pos-4:#5598e7;
+  --neg-1:#5a1f1f; --neg-2:#8a2e2e; --neg-3:#c04646; --neg-4:#e66767;
+  --neutral:#383835;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.45; }
+a { color: var(--s1); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 24px 16px 64px; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: baseline; justify-content: space-between; margin-bottom: 20px; }
+header.top h1 { font-size: 26px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+header.top .meta { color: var(--muted); font-size: 13px; }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 20px; }
+nav.tabs a { text-decoration: none; color: var(--ink-2); border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; font-size: 13px; background: var(--card); }
+nav.tabs a:hover { color: var(--ink); border-color: var(--axis); }
+section { margin-bottom: 40px; }
+h2 { font-size: 20px; font-weight: 650; margin: 0 0 12px; letter-spacing: -0.01em; }
+h3 { font-size: 16px; font-weight: 600; margin: 18px 0 8px; }
+p.lead { color: var(--ink-2); margin: 0 0 14px; max-width: 900px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.kpi { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+.kpi .value { font-size: 26px; font-weight: 650; margin-top: 4px; }
+.kpi .sub { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.chart-box { position: relative; height: 320px; }
+.chart-box.small { height: 220px; }
+.row { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 900px) { .row.two { grid-template-columns: 1fr 1fr; } }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; position: sticky; top: 0; background: var(--card); z-index: 1; }
+th:first-child, td:first-child { text-align: left; }
+th.sortable { cursor: pointer; }
+th.sortable:hover { color: var(--ink); }
+td.name { white-space: normal; min-width: 190px; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.pos { color: var(--good); } .neg { color: var(--bad); }
+.pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--ink-2); background: var(--surface); }
+.pill.ok { color: var(--good); } .pill.failed { color: var(--bad); } .pill.never { color: var(--warn); }
+.pill.portfolio { border-color: var(--s1); color: var(--s1); }
+.pill.watchlist { border-color: var(--s7); color: var(--s7); }
+.pill.benchmark { border-color: var(--s4); color: var(--s4); }
+.heat td { text-align: center; padding: 4px 6px; min-width: 52px; }
+.heat td.name { min-width: 230px; white-space: normal; }
+.heat td.v { color: var(--ink); border-radius: 4px; border-bottom: 2px solid var(--card); border-right: 2px solid var(--card); }
+.heat td.p1 { background: var(--pos-1); } .heat td.p2 { background: var(--pos-2); } .heat td.p3 { background: var(--pos-3); color:#fff; } .heat td.p4 { background: var(--pos-4); color:#fff; }
+.heat td.n1 { background: var(--neg-1); } .heat td.n2 { background: var(--neg-2); } .heat td.n3 { background: var(--neg-3); color:#fff; } .heat td.n4 { background: var(--neg-4); color:#fff; }
+.heat td.z { background: var(--neutral); }
+.heat td.partial { font-style: italic; opacity: 0.85; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 10px; font-size: 13px; }
+.controls label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; color: var(--ink-2); }
+.controls .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; background: var(--axis); }
+.controls button, .seg button { background: var(--card); color: var(--ink-2); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+.seg button.on { color: var(--ink); border-color: var(--axis); font-weight: 600; }
+.fund { margin-bottom: 20px; }
+.fund summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; padding: 12px 16px; }
+.fund summary::-webkit-details-marker { display: none; }
+.fund summary h3 { margin: 0; font-size: 16px; }
+.fund summary .mini { color: var(--muted); font-size: 13px; }
+.fund .body { padding: 0 16px 16px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px 12px; margin: 10px 0 14px; }
+.stats > div { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.stats .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
+.stats .val { font-size: 16px; font-weight: 600; }
+.stats .sub { color: var(--muted); font-size: 11px; }
+details.inner summary { cursor: pointer; color: var(--ink-2); font-size: 13px; padding: 6px 0; }
+.note { color: var(--muted); font-size: 12.5px; }
+.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.empty { color: var(--muted); font-style: italic; }
+.theme-toggle { font-size: 12px; background: none; border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; color: var(--ink-2); cursor: pointer; }
+ul.method { color: var(--ink-2); font-size: 13.5px; padding-left: 20px; }
+ul.method li { margin-bottom: 4px; }
+.notice { border-left: 3px solid var(--warn); padding: 8px 12px; background: var(--surface); border-radius: 0 8px 8px 0; font-size: 13.5px; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>{{ m.settings.title }}</h1>
+    <div class="meta">Генериран: {{ m.generated_at }} · {{ m.funds|length }} фонда · версия {{ m.version }}</div>
+  </div>
+  <div><button class="theme-toggle" id="themeToggle" type="button">Тъмна/светла тема</button></div>
+</header>
+<nav class="tabs">
+  <a href="#portfolio">Моят портфейл</a>
+  <a href="#overview">Преглед на фондовете</a>
+  <a href="#yearly">Доходност по години</a>
+  <a href="#compare">Сравнение</a>
+  <a href="#funds">Фондове по отделно</a>
+  <a href="#status">Данни и източници</a>
+  <a href="#method">Методика</a>
+</nav>
+
+{% set failed = m.funds|selectattr('fetch_status', 'equalto', 'failed')|list %}
+{% set never = m.funds|selectattr('n_points', 'equalto', 0)|list %}
+{% if never %}
+<div class="notice">За {{ never|length }} фонда все още няма данни в базата:
+  {% for f in never %}<strong>{{ f.name }}</strong>{{ ", " if not loop.last }}{% endfor %}.
+  Виж раздела <a href="#status">Данни и източници</a>.</div>
+{% endif %}
+
+<!-- ============================ PORTFOLIO ============================ -->
+<section id="portfolio">
+  <h2>Моят портфейл – симулация на плана</h2>
+  <p class="lead">По {{ m.settings.monthly_amount|money(0) }} EUR във всеки от портфейлните фондове на всяко {{ m.settings.purchase_day }}-то число (или първия следващ ден с цена), от {{ m.settings.my_plan_start }} до последната налична цена.
+  {% if m.has_transactions %}Реалните покупки от <code>data/transactions.csv</code> са показани отделно за сравнение.{% endif %}</p>
+  {% set p = m.portfolio %}
+  {% if p.members %}
+  <div class="kpis">
+    <div class="kpi"><div class="label">Вложени</div><div class="value">{{ p.invested|money }} €</div><div class="sub">{{ p.members|length }} фонда</div></div>
+    <div class="kpi"><div class="label">Текуща стойност</div><div class="value">{{ p.value|money }} €</div><div class="sub">към {{ p.as_of }}</div></div>
+    <div class="kpi"><div class="label">Печалба / загуба</div><div class="value {{ 'pos' if p.pnl >= 0 else 'neg' }}">{{ p.pnl|money }} €</div><div class="sub">{{ p.pnl_pct|pct }}</div></div>
+    <div class="kpi"><div class="label">Годишна доходност (XIRR)</div><div class="value {{ 'pos' if (p.xirr or 0) >= 0 else 'neg' }}">{{ p.xirr|pct }}</div><div class="sub">претеглена по пари</div></div>
+    {% if p.real %}
+    <div class="kpi"><div class="label">Реален портфейл</div><div class="value {{ 'pos' if p.real.pnl >= 0 else 'neg' }}">{{ p.real.pnl_pct|pct }}</div><div class="sub">{{ p.real.invested|money }} € → {{ p.real.value|money }} € · XIRR {{ p.real.xirr|pct }}</div></div>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="chart-box"><canvas id="portfolioChart" role="img" aria-label="Стойност на портфейла спрямо вложените пари"></canvas></div>
+  </div>
+  <div class="table-wrap card" style="margin-top:16px">
+  <table>
+    <thead><tr><th>Фонд</th><th>Покупки</th><th>Вложени €</th><th>Дялове</th><th>Средна цена</th><th>Последна цена</th><th>Стойност €</th><th>П/З €</th><th>П/З %</th><th>XIRR</th></tr></thead>
+    <tbody>
+    {% for f in m.funds if f.group == 'portfolio' %}
+      {% set d = f.dca_plan %}
+      <tr>
+        <td class="name"><a href="#f-{{ f.isin }}">{{ f.name }}</a>{% if f.dca_currency != 'EUR' %} <span class="pill">{{ f.dca_currency }}</span>{% endif %}</td>
+        {% if d.n_purchases %}
+        <td>{{ d.n_purchases }}</td><td>{{ d.invested|money }}</td><td>{{ d.units|num }}</td><td>{{ d.avg_price|num }}</td><td>{{ d.last_nav|num }}</td>
+        <td>{{ d.value|money }}</td><td class="{{ 'pos' if d.pnl >= 0 else 'neg' }}">{{ d.pnl|money }}</td>
+        <td class="{{ 'pos' if d.pnl >= 0 else 'neg' }}">{{ d.pnl_pct|pct }}</td><td class="{{ 'pos' if (d.xirr or 0) >= 0 else 'neg' }}">{{ d.xirr|pct }}</td>
+        {% else %}<td colspan="9" class="empty">няма данни за периода</td>{% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="card empty">Все още няма данни за портфейлните фондове след {{ m.settings.my_plan_start }}.</div>
+  {% endif %}
+</section>
+
+<!-- ============================ OVERVIEW ============================ -->
+<section id="overview">
+  <h2>Преглед на фондовете</h2>
+  <p class="lead">Доходност на самия фонд (NAV към NAV) за стандартни периоди, риск и резултат от симулацията „по {{ m.settings.monthly_amount|money(0) }} на месец от самото начало на фонда“. Кликни върху заглавие на колона за сортиране.</p>
+  <div class="table-wrap card">
+  <table id="overviewTable">
+    <thead><tr>
+      <th class="sortable" data-k="name" data-t="s">Фонд</th><th>Група</th><th class="sortable" data-k="last_date" data-t="s">Последна цена</th>
+      <th class="sortable" data-k="ytd">YTD</th><th class="sortable" data-k="r1y">1 г.</th><th class="sortable" data-k="r3y">3 г. (год.)</th><th class="sortable" data-k="r5y">5 г. (год.)</th><th class="sortable" data-k="rinc">От начало (год.)</th>
+      <th class="sortable" data-k="vol">Волат.</th><th class="sortable" data-k="dd">Макс. спад</th>
+      <th class="sortable" data-k="dca_xirr">DCA XIRR</th><th class="sortable" data-k="dca_pnl">DCA П/З %</th><th class="sortable" data-k="first_date" data-t="s">Данни от</th><th>Статус</th>
+    </tr></thead>
+    <tbody>
+    {% for f in m.funds %}
+      {% set pr = f.periods %}
+      <tr data-name="{{ f.name }}" data-last_date="{{ f.last_date or '' }}" data-first_date="{{ f.first_date or '' }}"
+          data-ytd="{{ pr.ytd.cum if pr.ytd and pr.ytd.available else '' }}" data-r1y="{{ pr['1y'].cum if pr['1y'] and pr['1y'].available else '' }}"
+          data-r3y="{{ pr['3y'].ann if pr['3y'] and pr['3y'].available else '' }}" data-r5y="{{ pr['5y'].ann if pr['5y'] and pr['5y'].available else '' }}"
+          data-rinc="{{ pr.inception.ann if pr.inception and pr.inception.ann is not none else '' }}"
+          data-vol="{{ f.risk.volatility if f.risk.volatility is not none else '' }}" data-dd="{{ f.risk.max_drawdown.dd if f.risk.max_drawdown else '' }}"
+          data-dca_xirr="{{ f.dca_full.xirr if f.dca_full.xirr is not none else '' }}" data-dca_pnl="{{ f.dca_full.pnl_pct if f.dca_full.pnl_pct is not none else '' }}">
+        <td class="name"><a href="#f-{{ f.isin }}">{{ f.name }}</a><br><span class="note">{{ f.isin }} · {{ f.currency }}{% if f.nav_currency != f.currency %} → {{ f.nav_currency }}{% endif %}</span></td>
+        <td><span class="pill {{ f.group }}">{{ f.group_label }}</span></td>
+        <td>{% if f.last_nav %}{{ f.last_nav|num }}<br><span class="note">{{ f.last_date }}</span>{% else %}—{% endif %}</td>
+        {% for key, kind in [('ytd','cum'),('1y','cum'),('3y','ann'),('5y','ann')] %}
+          {% set v = pr[key][kind] if pr[key] and pr[key].available else none %}
+          <td class="{{ 'pos' if v is not none and v >= 0 else ('neg' if v is not none else '') }}">{{ v|pct(1) }}</td>
+        {% endfor %}
+        {% set v = pr.inception.ann if pr.inception else none %}
+        <td class="{{ 'pos' if v is not none and v >= 0 else ('neg' if v is not none else '') }}">{{ v|pct(1) }}{% if pr.inception and pr.inception.ann is none and pr.inception.cum is not none %}<br><span class="note">{{ pr.inception.cum|pct(1) }} общо</span>{% endif %}</td>
+        <td>{{ f.risk.volatility|pct(1) if f.risk.volatility is not none else '—' }}</td>
+        <td class="neg">{{ f.risk.max_drawdown.dd|pct(1) if f.risk.max_drawdown else '—' }}</td>
+        <td class="{{ 'pos' if (f.dca_full.xirr or 0) >= 0 else 'neg' }}">{{ f.dca_full.xirr|pct(1) }}</td>
+        <td class="{{ 'pos' if (f.dca_full.pnl_pct or 0) >= 0 else 'neg' }}">{{ f.dca_full.pnl_pct|pct(1) }}</td>
+        <td>{{ f.first_date or '—' }}<br><span class="note">{{ f.n_points }} цени</span></td>
+        <td><span class="pill {{ f.fetch_status }}">{{ {'ok':'OK','failed':'грешка','never':'няма'}[f.fetch_status] }}</span></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="note">Волатилност = годишно стандартно отклонение на месечните доходности. Макс. спад = най-голямото падане от връх до дъно. DCA XIRR = годишна доходност, претеглена по пари, при покупки от първата налична цена на фонда.</p>
+</section>
+
+<!-- ============================ YEARLY ============================ -->
+<section id="yearly">
+  <h2>Доходност по календарни години</h2>
+  <p class="lead">Промяна на цената на дял от последната цена на предходната година до последната цена на годината. <em>Курсив</em> = непълна година (фондът е стартирал през годината или годината още не е приключила).</p>
+  <div class="table-wrap card">
+  <table class="heat">
+    <thead><tr><th>Фонд</th>{% for y in m.years|reverse %}<th>{{ y }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for f in m.funds %}
+      {% set by = {} %}{% for y in f.yearly %}{% set _ = by.update({y.year: y}) %}{% endfor %}
+      <tr><td class="name" style="text-align:left"><a href="#f-{{ f.isin }}">{{ f.name }}</a></td>
+      {% for y in m.years|reverse %}{% set r = by.get(y) %}
+        {% if r %}<td class="v {{ heat_class(r.ret, 'y') }} {{ 'partial' if r.partial }}" title="{{ r.from }} → {{ r.to }}">{{ r.ret|pct(1) }}</td>{% else %}<td></td>{% endif %}
+      {% endfor %}</tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============================ COMPARE ============================ -->
+<section id="compare">
+  <h2>Сравнение – всички започват от 100</h2>
+  <p class="lead">Цената на дял е приведена към 100 в началото на избрания период, за да се види кой фонд е спечелил повече, независимо от номиналната цена. Избери до 8 фонда.</p>
+  <div class="card">
+    <div class="controls seg" id="rangeSeg">
+      <span>Период:</span>
+      <button data-r="plan">От плана ({{ m.settings.my_plan_start[:4] }})</button>
+      <button data-r="1y">1 г.</button><button data-r="3y" class="on">3 г.</button><button data-r="5y">5 г.</button><button data-r="10y">10 г.</button><button data-r="max">Макс.</button>
+    </div>
+    <div class="controls" id="fundPicker"></div>
+    <div class="chart-box"><canvas id="compareChart" role="img" aria-label="Сравнение на фондовете, индексирани към 100"></canvas></div>
+    <p class="note" id="compareNote"></p>
+  </div>
+</section>
+
+<!-- ============================ FUNDS ============================ -->
+<section id="funds">
+  <h2>Фондове по отделно</h2>
+  {% for f in m.funds %}
+  <details class="fund card" id="f-{{ f.isin }}" {% if f.group == 'portfolio' and loop.index <= 3 %}open{% endif %}>
+    <summary>
+      <h3>{{ f.name }}</h3>
+      <span class="pill {{ f.group }}">{{ f.group_label }}</span>
+      <span class="mini">{{ f.isin }} · {{ f.currency }}{% if f.nav_currency != f.currency %} (показано в {{ f.nav_currency }}){% endif %}{% if f.manager %} · {{ f.manager }}{% endif %}</span>
+      {% if f.last_nav %}<span class="mini">последна цена <strong>{{ f.last_nav|num }}</strong> ({{ f.last_date }})</span>{% endif %}
+      {% if f.periods['1y'] and f.periods['1y'].available %}<span class="mini">1 г.: <strong class="{{ 'pos' if f.periods['1y'].cum >= 0 else 'neg' }}">{{ f.periods['1y'].cum|pct(1) }}</strong></span>{% endif %}
+    </summary>
+    <div class="body">
+    {% if f.n_points == 0 %}
+      <p class="empty">Няма свалени данни за този фонд. Провери раздела „Данни и източници“ или добави CSV в <code>data/manual/</code>.</p>
+    {% else %}
+      {% if f.fx_note %}<p class="note">{{ f.fx_note }}</p>{% endif %}
+      {% if f.history_note %}<p class="note">{{ f.history_note }}</p>{% endif %}
+      <div class="stats">
+        {% for key, label in [('1m','1 мес.'),('3m','3 мес.'),('6m','6 мес.'),('ytd','YTD'),('1y','1 г.'),('3y','3 г.'),('5y','5 г.'),('10y','10 г.'),('inception','От начало')] %}
+          {% set pr = f.periods[key] if key in f.periods else none %}
+          <div><div class="label">{{ label }}</div>
+          {% if pr and pr.available %}
+            <div class="val {{ 'pos' if pr.cum >= 0 else 'neg' }}">{{ pr.cum|pct(1) }}</div>
+            {% if pr.ann is not none %}<div class="sub">{{ pr.ann|pct(1) }} годишно</div>{% elif key == 'inception' %}<div class="sub">от {{ pr.from }}</div>{% endif %}
+          {% else %}<div class="val">—</div>{% endif %}
+          </div>
+        {% endfor %}
+        <div><div class="label">Волатилност</div><div class="val">{{ f.risk.volatility|pct(1) if f.risk.volatility is not none else '—' }}</div><div class="sub">годишна</div></div>
+        <div><div class="label">Макс. спад</div><div class="val neg">{{ f.risk.max_drawdown.dd|pct(1) }}</div><div class="sub">{{ f.risk.max_drawdown.peak }} → {{ f.risk.max_drawdown.trough }}{% if f.risk.max_drawdown.recovered %}, възст. {{ f.risk.max_drawdown.recovered }}{% endif %}</div></div>
+        {% if f.risk.best %}<div><div class="label">Най-добър / най-лош месец</div><div class="val"><span class="pos">{{ f.risk.best.ret|pct(1) }}</span> / <span class="neg">{{ f.risk.worst.ret|pct(1) }}</span></div><div class="sub">{{ f.risk.positive_share|round(0)|int }}% положителни месеци</div></div>{% endif %}
+      </div>
+
+      <div class="row two">
+        <div>
+          <h3>Цена на дял</h3>
+          <div class="chart-box small"><canvas class="navChart" data-isin="{{ f.isin }}"></canvas></div>
+        </div>
+        <div>
+          <h3>Симулация: {{ m.settings.monthly_amount|money(0) }} {{ f.dca_currency }} всеки месец от началото</h3>
+          <div class="chart-box small"><canvas class="dcaChart" data-isin="{{ f.isin }}"></canvas></div>
+        </div>
+      </div>
+
+      {% set d = f.dca_full %}
+      {% if d.n_purchases %}
+      <div class="stats">
+        <div><div class="label">Покупки</div><div class="val">{{ d.n_purchases }}</div><div class="sub">от {{ d.first_purchase }}{% if d.skipped_months %}, {{ d.skipped_months }} пропуснати{% endif %}</div></div>
+        <div><div class="label">Вложени</div><div class="val">{{ d.invested|money }}</div><div class="sub">{{ f.dca_currency }}</div></div>
+        <div><div class="label">Стойност</div><div class="val">{{ d.value|money }}</div><div class="sub">към {{ d.as_of }}</div></div>
+        <div><div class="label">Печалба/загуба</div><div class="val {{ 'pos' if d.pnl >= 0 else 'neg' }}">{{ d.pnl|money }} ({{ d.pnl_pct|pct(1) }})</div></div>
+        <div><div class="label">XIRR</div><div class="val {{ 'pos' if (d.xirr or 0) >= 0 else 'neg' }}">{{ d.xirr|pct(2) }}</div><div class="sub">годишна, претеглена по пари</div></div>
+        <div><div class="label">Средна цена на покупка</div><div class="val">{{ d.avg_price|num }}</div><div class="sub">последна: {{ d.last_nav|num }}</div></div>
+      </div>
+      {% endif %}
+
+      {% set dp = f.dca_plan %}
+      {% if dp.n_purchases %}
+      <h3>Моят план (от {{ m.settings.my_plan_start }})</h3>
+      <div class="stats">
+        <div><div class="label">Покупки</div><div class="val">{{ dp.n_purchases }}</div></div>
+        <div><div class="label">Вложени</div><div class="val">{{ dp.invested|money }}</div></div>
+        <div><div class="label">Стойност</div><div class="val">{{ dp.value|money }}</div><div class="sub">към {{ dp.as_of }}</div></div>
+        <div><div class="label">П/З</div><div class="val {{ 'pos' if dp.pnl >= 0 else 'neg' }}">{{ dp.pnl|money }} ({{ dp.pnl_pct|pct(1) }})</div></div>
+        <div><div class="label">XIRR</div><div class="val {{ 'pos' if (dp.xirr or 0) >= 0 else 'neg' }}">{{ dp.xirr|pct(2) }}</div></div>
+        {% if f.real %}
+        <div><div class="label">Реално (transactions.csv)</div><div class="val {{ 'pos' if f.real.pnl >= 0 else 'neg' }}">{{ f.real.pnl_pct|pct(1) }}</div><div class="sub">{{ f.real.invested|money }} → {{ f.real.value|money }}, XIRR {{ f.real.xirr|pct(1) }}</div></div>
+        {% endif %}
+      </div>
+      <details class="inner"><summary>Покупки по плана ({{ dp.n_purchases }})</summary>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Дата</th><th>Планирана</th><th>Цена</th><th>Сума</th><th>Дялове</th><th>Общо дялове</th><th>Вложени</th><th>Стойност</th></tr></thead>
+          <tbody>{% for pch in dp.purchases %}<tr><td>{{ pch.date }}</td><td>{{ pch.intended }}</td><td>{{ pch.nav|num }}</td><td>{{ pch.amount|money }}</td><td>{{ pch.units|num }}</td><td>{{ pch.units_total|num }}</td><td>{{ pch.invested_total|money }}</td><td>{{ pch.value|money }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+      </details>
+      {% endif %}
+
+      <h3>Месечна доходност</h3>
+      {% set rows = {} %}
+      {% for mo in f.monthly %}{% set _ = rows.setdefault(mo.year, {}).update({mo.month: mo}) %}{% endfor %}
+      <div class="table-wrap"><table class="heat">
+        <thead><tr><th>Година</th>{% for mn in ['Яну','Фев','Мар','Апр','Май','Юни','Юли','Авг','Сеп','Окт','Ное','Дек'] %}<th>{{ mn }}</th>{% endfor %}<th>Година</th></tr></thead>
+        <tbody>
+        {% set yby = {} %}{% for y in f.yearly %}{% set _ = yby.update({y.year: y}) %}{% endfor %}
+        {% for y in rows|sort(reverse=true) %}
+          <tr><td style="text-align:left"><strong>{{ y }}</strong></td>
+          {% for mi in range(1, 13) %}{% set r = rows[y].get(mi) %}
+            {% if r %}<td class="v {{ heat_class(r.ret) }} {{ 'partial' if r.partial }}">{{ r.ret|pct(1) }}</td>{% else %}<td></td>{% endif %}
+          {% endfor %}
+          {% set yr = yby.get(y) %}
+          <td class="v {{ heat_class(yr.ret, 'y') if yr else '' }} {{ 'partial' if yr and yr.partial }}"><strong>{{ yr.ret|pct(1) if yr else '—' }}</strong></td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+
+      {% if d.n_purchases %}
+      <details class="inner"><summary>Симулация по години (от началото на фонда)</summary>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Година</th><th>Вложени през годината</th><th>Общо вложени</th><th>Стойност в края</th><th>Печалба за годината</th><th>Общо П/З</th><th>Общо П/З %</th></tr></thead>
+          <tbody>{% for y in d.yearly %}<tr><td>{{ y.year }}</td><td>{{ y.invested_year|money }}</td><td>{{ y.invested_total|money }}</td><td>{{ y.value|money }}</td>
+            <td class="{{ 'pos' if y.gain_year >= 0 else 'neg' }}">{{ y.gain_year|money }}</td><td class="{{ 'pos' if y.pnl_total >= 0 else 'neg' }}">{{ y.pnl_total|money }}</td><td class="{{ 'pos' if (y.pnl_total_pct or 0) >= 0 else 'neg' }}">{{ y.pnl_total_pct|pct(1) }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+      </details>
+      {% endif %}
+      <p class="note">Източници на цените: {% for s, n in f.sources.items() %}{{ s }} ({{ n }}){{ ', ' if not loop.last }}{% endfor %}. Данни от {{ f.first_date }} до {{ f.last_date }}, {{ f.n_points }} точки.</p>
+    {% endif %}
+    </div>
+  </details>
+  {% endfor %}
+</section>
+
+<!-- ============================ STATUS ============================ -->
+<section id="status">
+  <h2>Данни и източници</h2>
+  <p class="lead">Резултат от последното обновяване{% if m.last_run_at %} ({{ m.last_run_at }}){% endif %}. Всеки фонд се опитва през няколко източника по ред; първият, който върне история, се записва. Ако всички се провалят, свали CSV ръчно в <code>data/manual/&lt;ISIN&gt;.csv</code>.</p>
+  <div class="table-wrap card">
+  <table>
+    <thead><tr><th>Фонд</th><th>Източник</th><th>Резултат</th><th>Нови редове</th><th>Период</th><th>Съобщение</th></tr></thead>
+    <tbody>
+    {% for f in m.funds %}
+      {% if f.last_run %}
+        {% for r in f.last_run %}
+        <tr><td class="name">{% if loop.first %}{{ f.name }}<br><span class="note">{{ f.isin }}</span>{% endif %}</td><td>{{ r.provider }}</td>
+          <td><span class="pill {{ 'ok' if r.status == 'ok' else 'failed' }}">{{ r.status }}</span></td><td>{{ r.rows }}</td>
+          <td>{% if r.first_date %}{{ r.first_date }} → {{ r.last_date }}{% else %}—{% endif %}</td><td style="white-space:normal;text-align:left;max-width:420px"><span class="note">{{ r.message }}</span></td></tr>
+        {% endfor %}
+      {% else %}
+        <tr><td class="name">{{ f.name }}<br><span class="note">{{ f.isin }}</span></td><td colspan="5" class="empty">няма запис от последното обновяване</td></tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============================ METHOD ============================ -->
+<section id="method">
+  <h2>Методика и уговорки</h2>
+  <ul class="method">
+    <li><strong>Цени.</strong> Дневни нетни стойности на дял (NAV) от Financial Times, Investing.com, BAMOSZ, Morningstar или ръчно свалени CSV файлове. Данните се пазят в <code>data/funds.sqlite</code> и се експортират в <code>data/csv/</code>.</li>
+    <li><strong>Доходност на фонда</strong> е промяна на NAV. Тя не включва входни/изходни такси на банката-дистрибутор, нито данъци. Таксите за управление вече са отразени в NAV.</li>
+    <li><strong>DCA симулация.</strong> Всеки месец на {{ m.settings.purchase_day }}-то число (или първия следващ ден с цена през същия месец) се купуват дялове за {{ m.settings.monthly_amount|money(0) }} по цената за деня. Ако в <code>config/funds.yaml</code> е зададена <code>entry_fee_pct</code>, тя се удържа от сумата преди покупката.</li>
+    <li><strong>XIRR</strong> е вътрешната норма на възвръщаемост на реалните парични потоци (всички покупки като разходи, текущата стойност като приход) – това е доходността, която усещаш като инвеститор, за разлика от доходността на фонда.</li>
+    <li><strong>Реален портфейл.</strong> Ако попълниш <code>data/transactions.csv</code> с датите и сумите на реалните си покупки, отчетът показва и тях – така можеш да сравниш реалния резултат със симулацията.</li>
+    <li><strong>BGN фондове</strong> се преизчисляват в EUR по фиксирания курс {{ m.settings.bgn_per_eur }}. Ако източникът вече дава част от историята в евро (скок с множител 1/{{ m.settings.bgn_per_eur }}), се преизчислява само частта в лева. Фондове в USD се симулират в USD.</li>
+    <li>Миналото представяне не гарантира бъдещи резултати. Това е личен инструмент за анализ, не инвестиционен съвет.</li>
+  </ul>
+</section>
+</div>
+
+<script type="application/json" id="data">{{ data_json|safe }}</script>
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById('data').textContent);
+  const SLOTS = ['--s1','--s2','--s3','--s4','--s5','--s6','--s7','--s8'];
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const fmtPct = (v, nd = 1) => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(nd) + '%';
+  const fmtNum = (v, nd = 2) => v == null ? '—' : v.toLocaleString('bg-BG', { minimumFractionDigits: nd, maximumFractionDigits: nd });
+  const byIsin = {}; DATA.funds.forEach(f => byIsin[f.isin] = f);
+
+  // ---- theme toggle
+  const root = document.documentElement;
+  const toggle = document.getElementById('themeToggle');
+  try { const t = localStorage.getItem('fpt-theme'); if (t) root.setAttribute('data-theme', t); } catch (e) {}
+  toggle.addEventListener('click', () => {
+    const dark = root.getAttribute('data-theme') === 'dark' || (!root.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
+    const next = dark ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('fpt-theme', next); } catch (e) {}
+    rebuildAll();
+  });
+
+  // ---- Chart.js defaults
+  function baseOptions(yFmt) {
+    return {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', align: 'end', labels: { color: css('--ink-2'), boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: 'rectRounded', font: { size: 12 } } },
+        tooltip: { backgroundColor: css('--card'), titleColor: css('--ink'), bodyColor: css('--ink-2'), borderColor: css('--border'), borderWidth: 1, padding: 10,
+          callbacks: { label: (c) => ` ${c.dataset.label}: ${yFmt(c.parsed.y)}` } },
+      },
+      elements: { line: { borderWidth: 2, tension: 0 }, point: { radius: 0, hitRadius: 8, hoverRadius: 4 } },
+      scales: {
+        x: { ticks: { color: css('--muted'), maxTicksLimit: 8, maxRotation: 0, autoSkip: true, callback: function (v) { const l = this.getLabelForValue(v); return l ? l.slice(0, 7) : ''; } }, grid: { display: false }, border: { color: css('--axis') } },
+        y: { ticks: { color: css('--muted'), callback: (v) => yFmt(v) }, grid: { color: css('--grid') }, border: { display: false } },
+      },
+    };
+  }
+  const charts = [];
+  function makeChart(canvas, config) { const c = new Chart(canvas, config); charts.push(c); return c; }
+  function destroyAll() { charts.splice(0).forEach(c => c.destroy()); }
+
+  // ---- portfolio chart
+  function buildPortfolio() {
+    const el = document.getElementById('portfolioChart');
+    if (!el || !DATA.portfolio.value_series || !DATA.portfolio.value_series.length) return;
+    const vs = DATA.portfolio.value_series;
+    makeChart(el, {
+      type: 'line',
+      data: { labels: vs.map(r => r[0]), datasets: [
+        { label: 'Стойност на портфейла', data: vs.map(r => r[1]), borderColor: css('--s1'), backgroundColor: css('--s1'), fill: false },
+        { label: 'Вложени пари', data: vs.map(r => r[2]), borderColor: css('--muted'), backgroundColor: css('--muted'), borderDash: [4, 3], stepped: true, fill: false },
+      ] },
+      options: baseOptions(v => fmtNum(v, 2) + ' €'),
+    });
+  }
+
+  // ---- per-fund charts
+  function buildFundCharts() {
+    document.querySelectorAll('canvas.navChart').forEach(el => {
+      const f = byIsin[el.dataset.isin]; if (!f || !f.nav.length) return;
+      makeChart(el, { type: 'line', data: { labels: f.nav.map(r => r[0]), datasets: [{ label: 'NAV ' + (f.nav_currency || f.currency), data: f.nav.map(r => r[1]), borderColor: css('--s1'), backgroundColor: css('--s1') }] },
+        options: Object.assign(baseOptions(v => fmtNum(v, 4)), { plugins: Object.assign(baseOptions(v => v).plugins, { legend: { display: false } }) }) });
+    });
+    document.querySelectorAll('canvas.dcaChart').forEach(el => {
+      const f = byIsin[el.dataset.isin]; if (!f) return;
+      const vs = f.dca_full.value_series; if (!vs || !vs.length) return;
+      makeChart(el, { type: 'line', data: { labels: vs.map(r => r[0]), datasets: [
+        { label: 'Стойност', data: vs.map(r => r[1]), borderColor: css('--s1'), backgroundColor: css('--s1') },
+        { label: 'Вложени', data: vs.map(r => r[2]), borderColor: css('--muted'), backgroundColor: css('--muted'), borderDash: [4, 3], stepped: true },
+      ] }, options: baseOptions(v => fmtNum(v, 0) + ' ' + f.dca_currency) });
+    });
+  }
+
+  // ---- comparison chart (indexed to 100, month-end data)
+  const picker = document.getElementById('fundPicker');
+  const note = document.getElementById('compareNote');
+  let range = '3y';
+  const selected = new Map(); // isin -> slot index
+  const defaults = DATA.funds.filter(f => f.nav_m.length > 1).slice(0, Math.min(8, DATA.settings.default_compare || 6));
+  const bench = DATA.funds.find(f => f.group === 'benchmark' && f.nav_m.length > 1);
+  if (bench && !defaults.includes(bench)) { if (defaults.length >= 8) defaults.pop(); defaults.push(bench); }
+  defaults.forEach(f => selected.set(f.isin, freeSlot()));
+  function freeSlot() { const used = new Set(selected.values()); for (let i = 0; i < 8; i++) if (!used.has(i)) return i; return -1; }
+
+  function renderPicker() {
+    picker.innerHTML = '';
+    DATA.funds.forEach(f => {
+      if (!f.nav_m || f.nav_m.length < 2) return;
+      const lab = document.createElement('label');
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = selected.has(f.isin);
+      cb.disabled = !cb.checked && selected.size >= 8;
+      cb.addEventListener('change', () => {
+        if (cb.checked) { const s = freeSlot(); if (s < 0) { cb.checked = false; return; } selected.set(f.isin, s); }
+        else selected.delete(f.isin);
+        renderPicker(); buildCompare();
+      });
+      const sw = document.createElement('span'); sw.className = 'sw';
+      if (selected.has(f.isin)) sw.style.background = css(SLOTS[selected.get(f.isin)]);
+      lab.append(cb, sw, document.createTextNode(f.name));
+      picker.appendChild(lab);
+    });
+  }
+  function rangeStart(lastDate) {
+    const d = new Date(lastDate);
+    if (range === 'plan') return DATA.settings.my_plan_start;
+    if (range === 'max') return '1900-01-01';
+    const years = { '1y': 1, '3y': 3, '5y': 5, '10y': 10 }[range];
+    d.setFullYear(d.getFullYear() - years);
+    return d.toISOString().slice(0, 10);
+  }
+  let compareChart = null;
+  function buildCompare() {
+    const el = document.getElementById('compareChart');
+    if (compareChart) { compareChart.destroy(); charts.splice(charts.indexOf(compareChart), 1); compareChart = null; }
+    const funds = [...selected.keys()].map(i => byIsin[i]).filter(Boolean);
+    if (!funds.length) { note.textContent = 'Избери поне един фонд.'; return; }
+    const lastDate = funds.map(f => f.nav_m[f.nav_m.length - 1][0]).sort().pop();
+    const start = rangeStart(lastDate);
+    const labelSet = new Set();
+    const series = funds.map(f => {
+      const pts = f.nav_m.filter(r => r[0] >= start.slice(0, 7));
+      if (pts.length < 2) return null;
+      const base = pts[0][1];
+      const map = {}; pts.forEach(r => { map[r[0].slice(0, 7)] = r[1] / base * 100; labelSet.add(r[0].slice(0, 7)); });
+      return { f, map, from: pts[0][0] };
+    }).filter(Boolean);
+    const labels = [...labelSet].sort();
+    const partial = series.filter(s => s.from > start && range !== 'max').map(s => `${s.f.name} (от ${s.from})`);
+    note.textContent = partial.length ? 'Фондове с по-къса история започват от 100 на първата си цена в периода: ' + partial.join('; ') : '';
+    compareChart = makeChart(el, {
+      type: 'line',
+      data: { labels, datasets: series.map(s => ({
+        label: s.f.name, data: labels.map(l => s.map[l] ?? null), spanGaps: true,
+        borderColor: css(SLOTS[selected.get(s.f.isin)]), backgroundColor: css(SLOTS[selected.get(s.f.isin)]),
+        borderDash: s.f.group === 'benchmark' ? [6, 4] : undefined,
+      })) },
+      options: baseOptions(v => fmtNum(v, 1)),
+    });
+  }
+  document.querySelectorAll('#rangeSeg button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#rangeSeg button').forEach(x => x.classList.remove('on')); b.classList.add('on'); range = b.dataset.r; buildCompare();
+  }));
+
+  // ---- sortable overview
+  (function () {
+    const table = document.getElementById('overviewTable'); if (!table) return;
+    const tbody = table.querySelector('tbody');
+    table.querySelectorAll('th.sortable').forEach(th => {
+      let dir = -1;
+      th.addEventListener('click', () => {
+        const k = th.dataset.k, t = th.dataset.t || 'n';
+        const rows = [...tbody.querySelectorAll('tr')];
+        rows.sort((a, b) => {
+          const av = a.dataset[k], bv = b.dataset[k];
+          if (av === '' && bv === '') return 0; if (av === '') return 1; if (bv === '') return -1;
+          return t === 's' ? av.localeCompare(bv) * dir : (parseFloat(av) - parseFloat(bv)) * dir;
+        });
+        rows.forEach(r => tbody.appendChild(r)); dir = -dir;
+      });
+    });
+  })();
+
+  function rebuildAll() { destroyAll(); compareChart = null; buildPortfolio(); buildFundCharts(); renderPicker(); buildCompare(); }
+  if (window.Chart) { rebuildAll(); } else { note.textContent = 'Chart.js не се зареди (няма интернет?). Таблиците работят без графики.'; renderPicker(); }
+})();
+</script>
+</body>
+</html>

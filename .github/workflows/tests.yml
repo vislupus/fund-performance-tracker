@@ -1,0 +1,40 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v
+        env:
+          PYTHONPATH: src
+
+  live-data-smoke:
+    # Проверява дали източниците на данни са достъпни от GitHub runner-а.
+    # Не записва нищо в репото; ако провайдър се провали, виж лога.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Download live data into a temporary database
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m fund_tracker --db /tmp/smoke.sqlite update --strict || echo "::warning::Some funds failed – see log above"
+          python -m fund_tracker --db /tmp/smoke.sqlite status
+          echo "--- DSK funds: days where the NAV jumps by more than 35% (currency re-denomination?) ---"
+          sqlite3 /tmp/smoke.sqlite "select a.isin, a.date, b.nav as prev, a.nav from nav a join nav b on b.isin=a.isin and b.date=(select max(date) from nav c where c.isin=a.isin and c.date<a.date) where a.isin like 'BG%' and (a.nav/b.nav < 0.65 or a.nav/b.nav > 1.5) order by a.isin, a.date"
+          echo "--- latest row per fund ---"
+          sqlite3 /tmp/smoke.sqlite "select isin, max(date), nav from nav group by isin order by isin"
