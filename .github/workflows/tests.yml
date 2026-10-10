@@ -28,19 +28,16 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - name: Inspect data source pages (diagnostics)
+      - name: Probe data source endpoints (diagnostics)
         continue-on-error: true
         env:
           PYTHONPATH: src
         run: |
-          python -m fund_tracker inspect \
-            "https://www.bamosz.hu/alapoldal?isin=HU0000729793" \
-            "https://www.bamosz.hu/en/alapoldal?isin=HU0000729793" \
-            "https://www.bamosz.hu/letoltesek" \
-            "https://www.otpalapkezelo.hu/hu/arfolyamok" \
-            "https://www.otpbank.hu/otpalapkezelo/hu/alkalmazasok" \
-            "https://dskam.bg/" \
-            "https://dskbank.bg/funds/en/product-catalog/otp-fund-management-funds"
+          python -m fund_tracker probe bamosz HU0000729793
+          python -m fund_tracker probe forms "https://dskam.bg/"
+          python -m fund_tracker probe forms "https://dskam.bg/funds/balance/"
+          python -m fund_tracker probe url "https://dskam.bg/funds/balance/.currentRate" --head 2500
+          python -m fund_tracker probe url "https://dskam.bg/?fund_type=0&fund_name=balance&datepicker_from=01.01.2024&datepicker_to=10.10.2026" --head 1500
 
       - name: Download live data into a temporary database
         env:

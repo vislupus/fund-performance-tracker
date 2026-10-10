@@ -89,6 +89,18 @@ def cmd_inspect(args) -> int:
     return 0
 
 
+def cmd_probe(args) -> int:
+    from .probe import probe_bamosz, probe_forms, probe_url
+
+    if args.what == "bamosz":
+        print(probe_bamosz(args.arg or "HU0000729793"))
+    elif args.what == "forms":
+        print(probe_forms(args.arg))
+    else:
+        print(probe_url(args.arg, head=args.head))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="fund_tracker", description="Fund NAV tracker")
     parser.add_argument("--db", default=str(DB_PATH), help="path to the SQLite database")
@@ -120,6 +132,12 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("inspect", help="diagnostics: summarise links/forms/tables of web pages")
     p.add_argument("url", nargs="+")
     p.set_defaults(func=cmd_inspect)
+
+    p = sub.add_parser("probe", help="diagnostics: probe download endpoints (bamosz <ISIN> | url <URL>)")
+    p.add_argument("what", choices=["bamosz", "url", "forms"])
+    p.add_argument("arg", nargs="?")
+    p.add_argument("--head", type=int, default=3000)
+    p.set_defaults(func=cmd_probe)
 
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
