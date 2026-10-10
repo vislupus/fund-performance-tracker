@@ -33,9 +33,10 @@ jobs:
         env:
           PYTHONPATH: src
         run: |
-          python -m fund_tracker probe grep "https://dskam.bg/ResourcePackages/DSKAssetsManagement/assets/dist/js/main.js?v=20260513104338" "investor-form|js-field-select-fund|datepicker_from|investment-helper|fund_type" --head 900
-          python -m fund_tracker probe grep "https://dskam.bg/" "<script[^>]*>[^<]{0,200}(fund_type|investor|datepicker)" --head 2500
-          python -m fund_tracker probe grep "https://dskam.bg/funds/balance/" "currentRate|history|istoria|chart|Highcharts|json|ajax" --head 500
+          python -m fund_tracker probe forms "https://dskam.bg/funds/balance/income"
+          python -m fund_tracker probe grep "https://dskam.bg/" "<script[^>]*src=\"[^\"]+\"" --head 0
+          python -m fund_tracker probe grep "https://dskam.bg/" "fund_type" --head 3000
+          python -m fund_tracker probe grep "https://dskam.bg/funds/balance/income" "Highcharts|series|chart|json|data-" --head 400
 
       - name: Download live data into a temporary database
         env:
