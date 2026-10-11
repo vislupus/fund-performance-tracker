@@ -192,7 +192,7 @@ ul.method li { margin-bottom: 4px; }
     <thead><tr>
       <th class="sortable" data-k="name" data-t="s">Фонд</th><th>Група</th><th class="sortable" data-k="last_date" data-t="s">Последна цена</th>
       <th class="sortable" data-k="ytd">YTD</th><th class="sortable" data-k="r1y">1 г.</th><th class="sortable" data-k="r3y">3 г. (год.)</th><th class="sortable" data-k="r5y">5 г. (год.)</th><th class="sortable" data-k="rinc">От начало (год.)</th>
-      <th class="sortable" data-k="vol">Волат.</th><th class="sortable" data-k="dd">Макс. спад</th>
+      <th class="sortable" data-k="vol">Волат. 5 г.</th><th class="sortable" data-k="dd">Макс. спад</th><th class="sortable" data-k="ocf">Разходи/год.</th>
       <th class="sortable" data-k="dca_xirr">DCA XIRR</th><th class="sortable" data-k="dca_pnl">DCA П/З %</th><th class="sortable" data-k="first_date" data-t="s">Данни от</th><th>Статус</th>
     </tr></thead>
     <tbody>
@@ -202,7 +202,7 @@ ul.method li { margin-bottom: 4px; }
           data-ytd="{{ pr.ytd.cum if pr.ytd and pr.ytd.available else '' }}" data-r1y="{{ pr['1y'].cum if pr['1y'] and pr['1y'].available else '' }}"
           data-r3y="{{ pr['3y'].ann if pr['3y'] and pr['3y'].available else '' }}" data-r5y="{{ pr['5y'].ann if pr['5y'] and pr['5y'].available else '' }}"
           data-rinc="{{ pr.inception.ann if pr.inception and pr.inception.ann is not none else '' }}"
-          data-vol="{{ f.risk.volatility if f.risk.volatility is not none else '' }}" data-dd="{{ f.risk.max_drawdown.dd if f.risk.max_drawdown else '' }}"
+          data-vol="{{ f.risk.volatility_5y if f.risk.volatility_5y is not none else (f.risk.volatility if f.risk.volatility is not none else '') }}" data-dd="{{ f.risk.max_drawdown.dd if f.risk.max_drawdown else '' }}" data-ocf="{{ f.ongoing_charges_pct if f.ongoing_charges_pct is not none else '' }}"
           data-dca_xirr="{{ f.dca_full.xirr if f.dca_full.xirr is not none else '' }}" data-dca_pnl="{{ f.dca_full.pnl_pct if f.dca_full.pnl_pct is not none else '' }}">
         <td class="name"><a href="#f-{{ f.isin }}">{{ f.name }}</a><br><span class="note">{{ f.isin }} · {{ f.currency }}{% if f.nav_currency != f.currency %} → {{ f.nav_currency }}{% endif %}</span></td>
         <td><span class="pill {{ f.group }}">{{ f.group_label }}</span></td>
@@ -213,8 +213,9 @@ ul.method li { margin-bottom: 4px; }
         {% endfor %}
         {% set v = pr.inception.ann if pr.inception else none %}
         <td class="{{ 'pos' if v is not none and v >= 0 else ('neg' if v is not none else '') }}">{{ v|pct(1) }}{% if pr.inception and pr.inception.ann is none and pr.inception.cum is not none %}<br><span class="note">{{ pr.inception.cum|pct(1) }} общо</span>{% endif %}</td>
-        <td>{{ f.risk.volatility|pct(1) if f.risk.volatility is not none else '—' }}</td>
+        <td>{% if f.risk.volatility_5y is not none %}{{ f.risk.volatility_5y|pct(1) }}{% elif f.risk.volatility is not none %}{{ f.risk.volatility|pct(1) }}<br><span class="note">от начало</span>{% else %}—{% endif %}</td>
         <td class="neg">{{ f.risk.max_drawdown.dd|pct(1) if f.risk.max_drawdown else '—' }}</td>
+        <td>{{ f.ongoing_charges_pct|num(2) ~ '%' if f.ongoing_charges_pct is not none else '—' }}</td>
         <td class="{{ 'pos' if (f.dca_full.xirr or 0) >= 0 else 'neg' }}">{{ f.dca_full.xirr|pct(1) }}</td>
         <td class="{{ 'pos' if (f.dca_full.pnl_pct or 0) >= 0 else 'neg' }}">{{ f.dca_full.pnl_pct|pct(1) }}</td>
         <td>{{ f.first_date or '—' }}<br><span class="note">{{ f.n_points }} цени</span></td>
@@ -224,7 +225,7 @@ ul.method li { margin-bottom: 4px; }
     </tbody>
   </table>
   </div>
-  <p class="note">Волатилност = годишно стандартно отклонение на месечните доходности. Макс. спад = най-голямото падане от връх до дъно. DCA XIRR = годишна доходност, претеглена по пари, при покупки от първата налична цена на фонда.</p>
+  <p class="note">Волатилност = годишно стандартно отклонение на месечните доходности за последните 5 години (или от началото, ако историята е по-къса). Макс. спад = най-голямото падане от връх до дъно за цялата история. Разходи/год. = текущи разходи на фонда от KID/фактшийт, въведени ръчно в <code>config/funds.yaml</code>; те вече са отразени в цената на дял. DCA XIRR = годишна доходност, претеглена по пари, при покупки от първата налична цена на фонда.</p>
 </section>
 
 <!-- ============================ YEARLY ============================ -->
@@ -291,7 +292,8 @@ ul.method li { margin-bottom: 4px; }
           {% else %}<div class="val">—</div>{% endif %}
           </div>
         {% endfor %}
-        <div><div class="label">Волатилност</div><div class="val">{{ f.risk.volatility|pct(1) if f.risk.volatility is not none else '—' }}</div><div class="sub">годишна</div></div>
+        <div><div class="label">Волатилност</div><div class="val">{{ f.risk.volatility_5y|pct(1) if f.risk.volatility_5y is not none else (f.risk.volatility|pct(1) if f.risk.volatility is not none else '—') }}</div><div class="sub">{% if f.risk.volatility_5y is not none %}5 г. · от начало {{ f.risk.volatility|pct(1) }}{% else %}годишна, от начало{% endif %}</div></div>
+        {% if f.ongoing_charges_pct is not none %}<div><div class="label">Разходи на фонда</div><div class="val">{{ f.ongoing_charges_pct|num(2) }}%</div><div class="sub">годишно, вече в NAV</div></div>{% endif %}
         <div><div class="label">Макс. спад</div><div class="val neg">{{ f.risk.max_drawdown.dd|pct(1) }}</div><div class="sub">{{ f.risk.max_drawdown.peak }} → {{ f.risk.max_drawdown.trough }}{% if f.risk.max_drawdown.recovered %}, възст. {{ f.risk.max_drawdown.recovered }}{% endif %}</div></div>
         {% if f.risk.best %}<div><div class="label">Най-добър / най-лош месец</div><div class="val"><span class="pos">{{ f.risk.best.ret|pct(1) }}</span> / <span class="neg">{{ f.risk.worst.ret|pct(1) }}</span></div><div class="sub">{{ f.risk.positive_share|round(0)|int }}% положителни месеци</div></div>{% endif %}
       </div>
