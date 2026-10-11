@@ -77,6 +77,7 @@ def build_fund_model(fund: Fund, series: an.Series, settings: Settings, today: d
         "manager": fund.manager,
         "inception": fund.inception.isoformat() if fund.inception else None,
         "entry_fee_pct": fund.entry_fee_pct,
+        "ongoing_charges_pct": fund.ongoing_charges_pct,
         "n_points": len(series),
         "first_date": series[0][0].isoformat() if series else None,
         "last_date": series[-1][0].isoformat() if series else None,
@@ -89,6 +90,8 @@ def build_fund_model(fund: Fund, series: an.Series, settings: Settings, today: d
         "risk": {
             "max_drawdown": an.max_drawdown(series) if series else None,
             "volatility": an.volatility_from_monthly(monthly),
+            "volatility_5y": an.volatility_from_monthly(monthly, months=60),
+            "volatility_3y": an.volatility_from_monthly(monthly, months=36),
             **an.best_worst_month(monthly),
         },
         "dca_full": dca_full.to_dict(),

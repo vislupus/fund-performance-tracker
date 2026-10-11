@@ -5,7 +5,10 @@
 #          benchmark  – сравнителен индекс/ETF
 # currency: валутата на класа дялове. За BGN NAV се преизчислява в EUR по фиксирания курс.
 # inception: дата на старт на фонда (само информативно; историята се сваля докъдето има данни)
-# entry_fee_pct: входна такса в проценти, прилага се в DCA симулацията (0 = без такса)
+# entry_fee_pct: входна такса в проценти, прилага се в DCA симулацията (0 = без такса).
+#            ДСК: 1,50% при еднократна покупка, 0,75% при инвестиционен план (акционни фондове).
+# ongoing_charges_pct: текущи годишни разходи на фонда (от KID/фактшийт), само информативно –
+#            те вече са удържани в NAV и не се изваждат повторно. Поддържа се ръчно.
 # providers: ред на източниците, които се опитват. Ако липсва, се ползва ред по подразбиране
 #            според ISIN (HU → bamosz, ft, investing; BG → dskam, ft, investing;
 #            други → ft, investing, morningstar).
@@ -80,6 +83,7 @@ funds:
     group: portfolio
     inception: 2019-06-21
     manager: Amundi
+    ongoing_charges_pct: 2.47
 
   # ---------- Наблюдавани (обмислям ги) ----------
   # ДСК фондовете се свалят от dskam.bg по вътрешния номер на фонда (ids.dskam_id)
@@ -131,6 +135,62 @@ funds:
     group: watchlist
     inception: 1999-09-01
     manager: Fidelity
+
+  # ---------- Наблюдавани: бюлетин на Банка ДСК, 09.10.2026 ----------
+  - isin: LU1883854199
+    name: Amundi Funds US Equity Fundamental Growth A EUR (C)
+    currency: EUR
+    group: watchlist
+    manager: Amundi
+    ongoing_charges_pct: 2.00
+  - isin: LU1956955550
+    name: Amundi Funds Polen Capital Global Growth A EUR (C)
+    currency: EUR
+    group: watchlist
+    manager: Amundi
+    ongoing_charges_pct: 2.10
+  - isin: LU0248185190
+    name: Schroder ISF US Large Cap A Acc EUR
+    currency: EUR
+    group: watchlist
+    manager: Schroders
+    ongoing_charges_pct: 1.74
+  - isin: LU0557291076
+    name: Schroder ISF Global Sustainable Growth A Acc EUR
+    currency: EUR
+    group: watchlist
+    manager: Schroders
+    ongoing_charges_pct: 1.80
+  - isin: LU1223083087
+    name: Schroder ISF Global Gold A Acc EUR Hedged
+    currency: EUR
+    group: watchlist
+    manager: Schroders
+    ongoing_charges_pct: 2.56
+  - isin: LU2191243257
+    name: Schroder ISF Healthcare Innovation A Acc EUR
+    currency: EUR
+    group: watchlist
+    manager: Schroders
+    ongoing_charges_pct: 2.22
+  - isin: LU0302446645
+    name: Schroder ISF Global Climate Change Equity A Acc EUR
+    currency: EUR
+    group: watchlist
+    manager: Schroders
+    ongoing_charges_pct: 1.97
+  - isin: LU2016064201
+    name: Schroder ISF Global Alternative Energy A Acc EUR
+    currency: EUR
+    group: watchlist
+    manager: Schroders
+    ongoing_charges_pct: 2.31
+  - isin: HU0000703855
+    name: OTP Central European Equity Fund – EUR
+    currency: EUR
+    group: watchlist
+    manager: OTP Fund Management
+    ongoing_charges_pct: 3.10
 
   # ---------- Бенчмарк ----------
   - isin: IE00B4L5Y983

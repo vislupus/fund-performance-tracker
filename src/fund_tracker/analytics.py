@@ -162,9 +162,14 @@ def max_drawdown(series: Series) -> dict:
             "recovered": recovered.isoformat() if recovered else None}
 
 
-def volatility_from_monthly(monthly: list[dict]) -> float | None:
+def volatility_from_monthly(monthly: list[dict], months: int | None = None, min_months: int = 6) -> float | None:
+    """Annualised standard deviation of monthly returns; `months` limits it to the last N months."""
     rets = [m["ret"] / 100 for m in monthly if not m.get("partial")]
-    if len(rets) < 6:
+    if months:
+        if len(rets) < min(months, max(min_months, 12)):
+            return None
+        rets = rets[-months:]
+    if len(rets) < min_months:
         return None
     mean = sum(rets) / len(rets)
     var = sum((r - mean) ** 2 for r in rets) / (len(rets) - 1)

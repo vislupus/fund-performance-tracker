@@ -30,6 +30,7 @@ class Fund:
     inception: dt.date | None = None
     manager: str = ""
     entry_fee_pct: float = 0.0
+    ongoing_charges_pct: float | None = None
     providers: list[str] = field(default_factory=list)
     ids: dict[str, Any] = field(default_factory=dict)
 
@@ -89,6 +90,7 @@ def load_funds(path: Path | None = None) -> list[Fund]:
                 inception=_to_date(item.get("inception")),
                 manager=str(item.get("manager") or ""),
                 entry_fee_pct=float(item.get("entry_fee_pct") or 0.0),
+                ongoing_charges_pct=(float(item["ongoing_charges_pct"]) if item.get("ongoing_charges_pct") is not None else None),
                 providers=[str(p) for p in (item.get("providers") or [])],
                 ids={str(k): v for k, v in (item.get("ids") or {}).items()},
             )
